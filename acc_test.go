@@ -1,6 +1,6 @@
-package accounter
+package adb
 
-// Accounter
+// Account database
 // Test
 // Copyright © 2017-2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
