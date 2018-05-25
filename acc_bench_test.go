@@ -36,18 +36,18 @@ func Benchmark12Sequence(b *testing.B) {
 	}
 	r := NewReception(&tc)
 
-	cnt := 1000000
+	//cnt := 1000000
 	// prepare
-	tArray := ForTestGenTransactionsArray(cnt)
+	//tArray := ForTestGenTransactionsArray(cnt)
 	time.Sleep(1 * time.Second)
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		if i == cnt {
-			return
-		}
+		//if i == cnt {
+		//	return
+		//}
 		//go r.DoTransaction(tArray[i], aArray[i])
-		r.ExeTransaction(tArray[i])
+		r.ExeTransaction(&Transaction{}) // tArray[i])
 	}
 }
 
@@ -60,16 +60,16 @@ func Benchmark12Parallel(b *testing.B) {
 	}
 	r := NewReception(&tc)
 
-	cnt := 1000000
+	//cnt := 1000000
 	// prepare
-	tArray := ForTestGenTransactionsArray(cnt)
+	// tArray := ForTestGenTransactionsArray(cnt)
 	time.Sleep(1 * time.Second)
-	i := 0
+	//i := 0
 	b.StartTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			r.ExeTransaction(tArray[i])
-			i++
+			r.ExeTransaction(&Transaction{}) // tArray[i]
+			//i++
 		}
 	})
 }
@@ -144,13 +144,13 @@ func ForTestGenQueryArray(cnt int) []*Query {
 	qArray := make([]*Query, 0, cnt)
 	for i := 0; i < cnt; i++ {
 		tr := &Transaction{}
-		p := &Answer{}
-		var a **Answer = &p
-		p = nil
+		//p := &Answer{}
+		//var a **Answer = &p
+		//p = nil
 
 		q := &Query{
 			t: tr,
-			a: a,
+			//a: a,
 		}
 
 		qArray = append(qArray, q)

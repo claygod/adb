@@ -8,16 +8,24 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
-	//"sync/atomic"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
 	"github.com/claygod/transaction"
 )
 
+// Hasp state
+const (
+	stateClosed int64 = iota
+	stateOpen
+)
+const permitError int64 = -2147483647
+
 type Reception struct {
-	sync.Mutex
+	// sync.Mutex
 	counter    int64
+	store      sync.Map
 	bucket     *Bucket
 	bkt        unsafe.Pointer
 	workerStop int64
@@ -36,76 +44,67 @@ func NewReception(tc *transaction.Core) *Reception {
 }
 
 func (r *Reception) ExeTransaction(t *Transaction) *Answer {
-	p := &Answer{}
-	var a **Answer = &p
-	p = nil
-
-	go r.DoTransaction(t, a)
-	r.GetAnswer(777, a)
-	return *a
+	num := r.DoTransaction(t)
+	return r.GetAnswer(num)
 }
 
-func (r *Reception) DoTransaction(t *Transaction, a **Answer) {
-	//fmt.Print("###### DOOOOOOOOOOOOOOOOOOOOOOOOOOOOO Do Do 1 ######\r\n")
-	// atomic.AddInt64(&r.counter, 1)
+func (r *Reception) DoTransaction(t *Transaction) int64 { // , a **Answer
+	num := atomic.AddInt64(&r.counter, 1)
 	q := &Query{
-		t: t,
-		a: a,
+		num: num,
+		t:   t,
+		//a:   a,
 	}
-	r.bucket.AddQuery(q)
-	//fmt.Print("###### DOOOOOOOOOOOOOOOOOOOOOOOOOOOOO Do Do 2 ######\r\n")
-	return
-}
-
-func (r *Reception) GetAnswer(num int, a **Answer) *Answer {
-	for i := 0; i < 5000; i++ {
-		if *a != nil {
-			//fmt.Print("ok ")
-			return *a
+	for {
+		if r.bucket.AddQuery(q) {
+			break
 		}
 		runtime.Gosched()
-		time.Sleep(time.Duration(i) * 10 * time.Microsecond)
+	}
+	return num
+}
+
+func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
+	for i := 0; i < 9500; i++ {
+		if a1, ok := r.store.Load(num); ok {
+			return a1.(*Answer)
+		}
+		runtime.Gosched()
+		u := i
+		if u > 10000 {
+			u = 10000
+		}
+		time.Sleep(time.Duration(u) * 1 * time.Microsecond) //
 	}
 	fmt.Printf("\r\n- не найден - %d \r\n", num)
 	return nil
 }
 
 func (r *Reception) getBucket() *Bucket {
-	r.Lock()
+	r.bucket.Close()
 	oldBucket := r.bucket
 	r.bucket = NewBucket()
-	r.Unlock()
 	return oldBucket
 }
 
 func (r *Reception) worker(level int) {
-	for { // u := 0; u < 5000; u++
+	for {
 		b := r.getBucket()
-		b.Lock()
 		ln := len(b.arr)
 		if ln == 0 {
-			if level != 0 {
-				b.Unlock()
-				return
-			}
-			time.Sleep(1 * time.Millisecond)
-			b.Unlock()
+			time.Sleep(1 * time.Microsecond)
 			continue
-		} else if ln > 100 {
-			//go r.worker(level + 1)
 		}
 
-		// fmt.Printf("len(w)=%d \r\n", len(b.arr))
 		var wg sync.WaitGroup
 		for _, q := range b.arr {
 			wg.Add(1)
 			go r.doTr(q.t, &wg)
-			*q.a = &Answer{code: 200}
+			r.store.Store(q.num, &Answer{code: 200})
 			// тут сохраняем лог
 		}
 		wg.Wait()
 
-		b.Unlock()
 		if r.workerStop == 1 {
 			return
 		}
@@ -117,23 +116,20 @@ func (r *Reception) doTr(t *Transaction, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-/*
-type Trans struct { // dummy
-}
-*/
 type Answer struct {
 	code int64
 }
 
 type Query struct {
-	t *Transaction
-	// t2 *transaction.Transaction
-	a **Answer
+	num int64
+	t   *Transaction
+	// a   **Answer
 }
 
 type Bucket struct {
 	sync.Mutex
-	arr []*Query
+	counter int64
+	arr     []*Query
 }
 
 func NewBucket() *Bucket {
@@ -142,10 +138,37 @@ func NewBucket() *Bucket {
 	}
 }
 
-func (b *Bucket) AddQuery(q *Query) {
+func (b *Bucket) AddQuery(q *Query) bool {
+	if !b.Catch() {
+		return false
+	}
+	defer b.Throw()
 	b.Lock()
 	b.arr = append(b.arr, q)
 	b.Unlock()
+
+	return true
+}
+
+func (b *Bucket) Catch() bool {
+	if atomic.AddInt64(&b.counter, 1) < 1 {
+		atomic.AddInt64(&b.counter, -1)
+		return false
+	}
+	return true
+}
+
+func (b *Bucket) Throw() {
+	atomic.AddInt64(&b.counter, -1)
+}
+
+func (b *Bucket) Close() {
+	atomic.AddInt64(&b.counter, permitError)
+	for {
+		if atomic.LoadInt64(&b.counter) <= permitError {
+			return
+		}
+	}
 }
 
 type Transaction struct {

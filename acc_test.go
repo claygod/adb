@@ -19,7 +19,7 @@ func TestTime1000000Trans(t *testing.T) {
 	}
 	r := NewReception(&tc)
 
-	cnt := 1000
+	cnt := 100
 	// prepare
 	tArray := ForTestGenTransactionsArray(cnt)
 	// time.Sleep(1 * time.Second)
@@ -39,16 +39,16 @@ func TestCreditPrepare(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	tr := &Transaction{}
 
-	p := &Answer{}
-	var a **Answer = &p
-	p = nil
+	//p := &Answer{}
+	//var a **Answer = &p
+	//p = nil
 
-	r.DoTransaction(tr, a)
+	num := r.DoTransaction(tr)
 
-	fmt.Printf("Answer ? %v \r\n", a)
+	fmt.Printf("Answer ?  \r\n")
 	for i := 0; i < 5; i++ {
 		fmt.Printf(" ... Answer wait ...\r\n")
-		if *a != nil {
+		if a := r.GetAnswer(num); a != nil {
 			fmt.Printf("Answer OK!\r\n")
 			break
 		} else {
