@@ -8,11 +8,34 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/claygod/transaction"
 )
 
-func TestCreditPrepare(t *testing.T) {
+func TestTime1000000Trans(t *testing.T) {
+	tc := transaction.New()
+	if !tc.Start() {
+		// t.Error("Now the start is possible!")
+	}
+	r := NewReception(&tc)
 
-	r := NewReception()
+	cnt := 1000
+	// prepare
+	tArray := ForTestGenTransactionsArray(cnt)
+	// time.Sleep(1 * time.Second)
+
+	for i := 0; i < cnt; i++ {
+		r.ExeTransaction(tArray[i])
+	}
+}
+
+func TestCreditPrepare(t *testing.T) {
+	tc := transaction.New()
+	if !tc.Start() {
+		t.Error("Now the start is possible!")
+	}
+	r := NewReception(&tc)
+
 	time.Sleep(10 * time.Millisecond)
 	tr := &Transaction{}
 
