@@ -13,6 +13,7 @@ import (
 	"github.com/claygod/transaction"
 )
 
+/*
 func BenchmarkBucketAddQuerySequence(b *testing.B) {
 	b.StopTimer()
 	bkt := NewBucket()
@@ -27,28 +28,30 @@ func BenchmarkBucketAddQuerySequence(b *testing.B) {
 		bkt.AddQuery(qArray[i])
 	}
 }
+*/
 
-func Benchmark12Sequence(b *testing.B) {
+func BenchmarkDoTransactionParallel(b *testing.B) {
 	b.StopTimer()
+
 	tc := transaction.New()
 	if !tc.Start() {
 		// t.Error("Now the start is possible!")
 	}
 	r := NewReception(&tc)
-
-	//cnt := 1000000
-	// prepare
-	//tArray := ForTestGenTransactionsArray(cnt)
 	time.Sleep(1 * time.Second)
-
+	//i := 0
+	tr := &Transaction{}
+	var i int64
 	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		//if i == cnt {
-		//	return
-		//}
-		//go r.DoTransaction(tArray[i], aArray[i])
-		r.ExeTransaction(&Transaction{}) // tArray[i])
-	}
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			r.DoTransaction(tr, i)
+			if r.queue.SizeQueue() > 500000 {
+				r.queue.PopAll()
+			}
+			i++
+		}
+	})
 }
 
 func Benchmark12Parallel(b *testing.B) {
@@ -72,6 +75,29 @@ func Benchmark12Parallel(b *testing.B) {
 			//i++
 		}
 	})
+}
+
+func Benchmark12Sequence(b *testing.B) {
+	b.StopTimer()
+	tc := transaction.New()
+	if !tc.Start() {
+		// t.Error("Now the start is possible!")
+	}
+	r := NewReception(&tc)
+
+	//cnt := 1000000
+	// prepare
+	//tArray := ForTestGenTransactionsArray(cnt)
+	time.Sleep(1 * time.Second)
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		//if i == cnt {
+		//	return
+		//}
+		//go r.DoTransaction(tArray[i], aArray[i])
+		r.ExeTransaction(&Transaction{}) // tArray[i])
+	}
 }
 
 /*

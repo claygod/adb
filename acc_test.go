@@ -43,7 +43,7 @@ func TestCreditPrepare(t *testing.T) {
 	//var a **Answer = &p
 	//p = nil
 
-	num := r.DoTransaction(tr)
+	num := r.DoTransaction(tr, 0)
 
 	fmt.Printf("Answer ?  \r\n")
 	for i := 0; i < 5; i++ {
