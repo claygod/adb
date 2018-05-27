@@ -5,6 +5,8 @@ package adb
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"runtime"
 	"sync"
@@ -33,6 +35,7 @@ type Reception struct {
 	tCore      *transaction.Core
 	queue      *queue.Queue
 	queuesPool [256]*queue.Queue
+	wal        *Wal
 }
 
 func NewReception(tc *transaction.Core) *Reception {
@@ -63,9 +66,20 @@ func (r *Reception) ExeTransaction(t *Transaction) *Answer {
 
 func (r *Reception) DoTransaction(t *Transaction, num int64) int64 { // , a **Answer
 	// num := atomic.AddInt64(&r.counter, 1)
+	var trGob bytes.Buffer // Stand-in for the network.
+
+	// Create an encoder and send a value.
+	enc := gob.NewEncoder(&trGob)
+	err := enc.Encode(t)
+	if err != nil {
+		r.store.Store(num, &Answer{code: 404})
+		fmt.Printf("\r\n- отбросили из-за ошибки кодирования - %d \r\n", num)
+	}
+
 	q := &Query{
 		num: num,
 		t:   t,
+		log: trGob.Bytes(),
 	}
 	/*
 		if !r.queuesPool[uint8(num)].PushTail(q) {
@@ -119,25 +133,27 @@ func (r *Reception) worker(level int) {
 		if len(b) > 5 {
 			// fmt.Printf("\r\n- размер очереди- %d \r\n", len(b))
 		}
-
+		//var logBuf bytes.Buffer
 		for _, q1 := range b {
 			q := q1.(*Query)
 			wg.Add(1)
-			go r.doTr(q.t, &wg, q.num)
+			go r.handler(q.t, &wg, q.num, q.log)
 			//r.store.Store(q.num, an) //
 			// тут сохраняем лог
 		}
 		wg.Wait()
 
-		if r.workerStop == 1 {
+		if !r.wal.Save() || r.workerStop == 1 {
 			return
 		}
 		//shift++
 	}
 }
 
-func (r *Reception) doTr(t *Transaction, wg *sync.WaitGroup, num int64) {
+func (r *Reception) handler(t *Transaction, wg *sync.WaitGroup, num int64, log []byte) {
 	r.store.Store(num, &Answer{code: 200})
+	// if ok
+	r.wal.Log(num, log)
 	// dummy
 	wg.Done()
 }
@@ -149,6 +165,7 @@ type Answer struct {
 type Query struct {
 	num int64
 	t   *Transaction
+	log []byte
 	// a   **Answer
 }
 
@@ -192,4 +209,19 @@ func (s *Store) Delete(key int64) {
 	s.Lock()
 	delete(s.arr, key)
 	s.Unlock()
+}
+
+type Wal struct {
+	sync.Mutex
+}
+
+func newWal() *Wal {
+	return &Wal{}
+}
+
+func (w *Wal) Log(key int64, b []byte) {
+}
+
+func (w *Wal) Save() bool {
+	return true
 }
