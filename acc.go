@@ -6,7 +6,7 @@ package adb
 
 import (
 	"bytes"
-	"encoding/gob"
+	// "encoding/gob"
 	"fmt"
 	"runtime"
 	"sync"
@@ -69,13 +69,14 @@ func (r *Reception) DoTransaction(t *Transaction, num int64) int64 { // , a **An
 	var trGob bytes.Buffer // Stand-in for the network.
 
 	// Create an encoder and send a value.
-	enc := gob.NewEncoder(&trGob)
-	err := enc.Encode(t)
-	if err != nil {
-		r.store.Store(num, &Answer{code: 404})
-		fmt.Printf("\r\n- отбросили из-за ошибки кодирования - %d \r\n", num)
-	}
-
+	/*
+		enc := gob.NewEncoder(&trGob)
+		err := enc.Encode(t)
+		if err != nil {
+			r.store.Store(num, &Answer{code: 404})
+			fmt.Printf("\r\n- отбросили из-за ошибки кодирования - %d \r\n", num)
+		}
+	*/
 	q := &Query{
 		num: num,
 		t:   t,
