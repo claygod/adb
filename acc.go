@@ -25,7 +25,7 @@ const (
 	stateOpen
 )
 const permitError int64 = -2147483647
-const sizeBucket int = 32
+const sizeBucket int64 = 32
 
 type Reception struct {
 	// sync.Mutex
@@ -34,7 +34,7 @@ type Reception struct {
 	//bucket     *Bucket
 	workerStop int64
 	tCore      *transaction.Core
-	queue      *queue.Queue
+	queue      *Queue
 	queuesPool [256]*queue.Queue
 	batcher    *batcher.Batcher
 	wal        *Wal
@@ -42,21 +42,21 @@ type Reception struct {
 
 func NewReception(tc *transaction.Core) *Reception {
 	wal := newWal()
-	q := queue.New(sizeBucket * 32)
+	q := newQueue(sizeBucket * 32) // queue.New(sizeBucket * 32)
 	// b := NewBucket()
 	r := &Reception{
 		store:   newStore(),
 		tCore:   tc,
 		queue:   q,
-		batcher: batcher.New(wal),
+		batcher: batcher.New(wal, q),
 		wal:     wal,
 	}
-
-	for i := 0; i < 256; i++ {
-		r.queuesPool[i] = queue.New(sizeBucket)
-	}
-
-	go r.worker(0)
+	/*
+		for i := 0; i < 256; i++ {
+			r.queuesPool[i] = queue.New(sizeBucket)
+		}
+	*/
+	//go r.worker(0)
 	// go r.worker(1)
 	//time.Sleep(100000 * time.Microsecond)
 	//go r.worker(1)
@@ -121,6 +121,7 @@ func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
 	return nil
 }
 
+/*
 func (r *Reception) worker(level int) {
 	//var shift uint8
 	var wg sync.WaitGroup
@@ -128,7 +129,7 @@ func (r *Reception) worker(level int) {
 	for {
 		//shift++
 		//b := r.queuesPool[shift].PopHeadList(sizeBucket)
-		b := r.queue.PopHeadList(sizeBucket)
+		// ///////// b := r.queue.PopHeadList(int(sizeBucket))
 		//b := r.queue.PopAll()
 
 		if len(b) == 0 {
@@ -156,7 +157,7 @@ func (r *Reception) worker(level int) {
 		//shift++
 	}
 }
-
+*/
 func (r *Reception) handler(t *Transaction, wg *sync.WaitGroup, num int64, log []byte) {
 	r.store.Store(num, &Answer{code: 200})
 	// if ok
@@ -230,5 +231,31 @@ func (w *Wal) Log(key int64, b []byte) {
 }
 
 func (w *Wal) Save() bool {
+	return true
+}
+
+type Queue struct {
+	f []*func() (int64, []byte)
+}
+
+func newQueue(num int64) *Queue {
+	q := &Queue{
+		f: make([]*(func() (int64, []byte)), 0, num),
+	}
+
+	for i := int64(0); i < num; i++ {
+		fn := func() (int64, []byte) {
+			return i, []byte{byte(i)}
+		}
+		q.f = append(q.f, &fn)
+	}
+	return q
+}
+
+func (q *Queue) GetBatch(count int64) []*func() (int64, []byte) {
+	return q.f
+}
+
+func (q *Queue) PushTail(que *Query) bool { // Mock !
 	return true
 }

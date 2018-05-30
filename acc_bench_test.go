@@ -7,7 +7,7 @@ package adb
 import (
 	// "fmt"
 	"os"
-	"strconv"
+	// "strconv"
 	"sync"
 	"testing"
 	"time"
@@ -207,7 +207,7 @@ func BenchmarkFsync32Parallel(b *testing.B) {
 }
 */
 // ------------------
-
+/*
 func BenchmarkDoTransactionParallel(b *testing.B) {
 	b.StopTimer()
 
@@ -231,7 +231,7 @@ func BenchmarkDoTransactionParallel(b *testing.B) {
 		}
 	})
 }
-
+*/
 func Benchmark12Parallel(b *testing.B) {
 	b.StopTimer()
 
