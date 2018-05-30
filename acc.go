@@ -14,6 +14,7 @@ import (
 	// "time"
 	// "unsafe"
 
+	"github.com/claygod/batcher"
 	"github.com/claygod/queue"
 	"github.com/claygod/transaction"
 )
@@ -35,15 +36,20 @@ type Reception struct {
 	tCore      *transaction.Core
 	queue      *queue.Queue
 	queuesPool [256]*queue.Queue
+	batcher    *batcher.Batcher
 	wal        *Wal
 }
 
 func NewReception(tc *transaction.Core) *Reception {
+	wal := newWal()
+	q := queue.New(sizeBucket * 32)
 	// b := NewBucket()
 	r := &Reception{
-		store: newStore(),
-		tCore: tc,
-		queue: queue.New(sizeBucket * 32),
+		store:   newStore(),
+		tCore:   tc,
+		queue:   q,
+		batcher: batcher.New(wal),
+		wal:     wal,
 	}
 
 	for i := 0; i < 256; i++ {

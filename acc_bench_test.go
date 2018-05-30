@@ -35,6 +35,7 @@ func BenchmarkFsyncSequense(b *testing.B) {
 	}
 }
 
+/*
 func BenchmarkFsync16Sequense(b *testing.B) {
 	b.StopTimer()
 	fvs := make([]*os.File, 0, 16)
@@ -204,7 +205,7 @@ func BenchmarkFsync32Parallel(b *testing.B) {
 		}
 	})
 }
-
+*/
 // ------------------
 
 func BenchmarkDoTransactionParallel(b *testing.B) {
