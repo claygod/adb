@@ -5,18 +5,19 @@ package adb
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
-	"bytes"
+	//"bytes"
 	// "encoding/gob"
 	"fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
-	// "time"
+	"time"
 	// "unsafe"
 
-	"github.com/claygod/batcher"
-	"github.com/claygod/queue"
-	"github.com/claygod/transaction"
+	"github.com/claygod/adb/account"
+	"github.com/claygod/adb/batcher"
+	"github.com/claygod/adb/queue"
+	// "github.com/claygod/adb/transaction"
 )
 
 // Hasp state
@@ -24,38 +25,43 @@ const (
 	stateClosed int64 = iota
 	stateOpen
 )
-const permitError int64 = -2147483647
-const sizeBucket int64 = 32
+
+// const permitError int64 = -2147483647
+const sizeBucket int64 = 256
 
 type Reception struct {
 	// sync.Mutex
-	counter int64
-	store   *Store //sync.Map
+	counter  int64
+	accounts *Accounts
+	answers  *Answers //sync.Map
 	//bucket     *Bucket
 	workerStop int64
-	tCore      *transaction.Core
-	queue      *Queue
-	queuesPool [256]*queue.Queue
-	batcher    *batcher.Batcher
-	wal        *Wal
+	//tCore      *transaction.Core
+	queue *Queue
+	//queuesPool [256]*queue.Queue
+	batcher *batcher.Batcher
+	wal     *Wal
 }
 
-func NewReception(tc *transaction.Core) *Reception {
+func NewReception() *Reception {
 	wal := newWal()
 	q := newQueue(sizeBucket * 32) // queue.New(sizeBucket * 32)
+	b := batcher.New(wal, q)       // .SetBatchSize(sizeBucket * 8).Start()
 	// b := NewBucket()
 	r := &Reception{
-		store:   newStore(),
-		tCore:   tc,
+		accounts: newAccounts(),
+		answers:  newAnswers(),
+		//tCore:    tc,
 		queue:   q,
-		batcher: batcher.New(wal, q),
+		batcher: b,
 		wal:     wal,
 	}
-	/*
-		for i := 0; i < 256; i++ {
-			r.queuesPool[i] = queue.New(sizeBucket)
-		}
-	*/
+	b.Start()
+
+	//for i := 0; i < 256; i++ {
+	//	r.queuesPool[i] = queue.New(sizeBucket)
+	//}
+
 	//go r.worker(0)
 	// go r.worker(1)
 	//time.Sleep(100000 * time.Microsecond)
@@ -63,49 +69,77 @@ func NewReception(tc *transaction.Core) *Reception {
 	return r
 }
 
-func (r *Reception) ExeTransaction(t *Transaction) *Answer {
+func (r *Reception) ExeTransaction(order *Order) *Answer {
 	num := atomic.AddInt64(&r.counter, 1)
-	r.DoTransaction(t, num)
+	r.DoTransaction(order, num)
 	//time.Sleep(1 * time.Microsecond)
 	return r.GetAnswer(num)
 }
 
-func (r *Reception) DoTransaction(t *Transaction, num int64) int64 { // , a **Answer
+func (r *Reception) DoTransaction(order *Order, num int64) int64 { // , a **Answer
 	// num := atomic.AddInt64(&r.counter, 1)
-	var trGob bytes.Buffer // Stand-in for the network.
+	// var orderGob bytes.Buffer // Stand-in for the network.
 
 	// Create an encoder and send a value.
 	/*
-		enc := gob.NewEncoder(&trGob)
-		err := enc.Encode(t)
+		enc := gob.NewEncoder(&orderGob)
+		err := enc.Encode(order)
 		if err != nil {
 			r.store.Store(num, &Answer{code: 404})
 			fmt.Printf("\r\n- отбросили из-за ошибки кодирования - %d \r\n", num)
 		}
 	*/
-	q := &Query{
-		num: num,
-		t:   t,
-		log: trGob.Bytes(),
-	}
-	/*
-		if !r.queuesPool[uint8(num)].PushTail(q) {
-			r.store.Store(num, &Answer{code: 404})
-			fmt.Printf("\r\n- отбросили - %d \r\n", num)
-		}
-	*/
-	if !r.queue.PushTail(q) {
-		r.store.Store(num, &Answer{code: 404})
-		fmt.Printf("\r\n- отбросили - %d \r\n", num)
-	}
+	fmt.Println(" @001@ ", num)
+	qLambda := func() (int64, []byte) {
+		newBalances := make([]account.Balance, 0, len(order.minus)+len(order.plus))
+		toLog := ""
+		fmt.Println(" @e01@ начат цикл")
+		for i := 0; i < len(order.minus); i++ {
+			acc := r.accounts.Account(order.minus[i].id)
+			if acc == nil {
+				r.Rollback(i, order)
+				fmt.Println(" @e01@ --", num)
+				return num, []byte("") // тут логовое сообщение для ошибочной транзакции
+			}
 
+			balance, err := acc.Balance(order.minus[i].key).
+				WriteOff(order.minus[i].amount)
+			if err != nil {
+				r.Rollback(i+1, order)
+				fmt.Println(" @e02@ --", num)
+				return num, []byte("") // тут логовое сообщение для ошибочной транзакции
+			}
+			newBalances = append(newBalances, balance)
+			toLog += "12345:373474376:USD:+:10"      // example
+			r.answers.Store(num, &Answer{code: 200}) // возвращаем положительный ответ
+			fmt.Println(" замыкание запущено под номером: ", num)
+		}
+		return num, []byte(toLog)
+	}
+	fmt.Println(" @002@ ", num)
+	if !r.queue.PushTail(&qLambda) {
+		r.answers.Store(num, &Answer{code: 404})
+		fmt.Printf("\r\n- отбросили ---- %d \r\n", num)
+	}
+	fmt.Println(" @003@ ", num)
+	//return 1
 	return num
+}
+func (r *Reception) Rollback(num int, order *Order) {
+	for i := 0; i < num; i++ {
+		r.accounts.Account(order.minus[i].id).
+			Balance(order.minus[i].key).
+			Debit(order.minus[i].amount)
+	}
 }
 
 func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
+	fmt.Println(" @031@ ", num)
 	for { //  i := 0; i < 1500000; i++
-		if a1, ok := r.store.Load(num); ok {
-			go r.store.Delete(num)
+		fmt.Println(" @032@ ", num)
+		if a1, ok := r.answers.Load(num); ok {
+			go r.answers.Delete(num)
+			fmt.Println(" @032@ ура, ответ получен! я", num)
 			return a1 //.(*Answer)
 		}
 		/*
@@ -114,7 +148,7 @@ func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
 				u = 10000
 			}
 		*/
-		// time.Sleep(10 * time.Microsecond) //time.Duration(u) *
+		time.Sleep(1000000 * time.Microsecond) //time.Duration(u) *
 		runtime.Gosched()
 	}
 	fmt.Printf("\r\n- не найден - %d \r\n", num)
@@ -158,8 +192,8 @@ func (r *Reception) worker(level int) {
 	}
 }
 */
-func (r *Reception) handler(t *Transaction, wg *sync.WaitGroup, num int64, log []byte) {
-	r.store.Store(num, &Answer{code: 200})
+func (r *Reception) handler(order *Order, wg *sync.WaitGroup, num int64, log []byte) {
+	r.answers.Store(num, &Answer{code: 200})
 	// if ok
 	r.wal.Log(num, log)
 	// dummy
@@ -171,52 +205,52 @@ type Answer struct {
 }
 
 type Query struct {
-	num int64
-	t   *Transaction
-	log []byte
+	num   int64
+	order *Order
+	log   []byte
 	// a   **Answer
 }
 
-type Transaction struct {
+type Order struct {
 	plus  []*Part
 	minus []*Part
 }
 
 type Part struct {
-	id     int64
+	id     string
 	key    string
-	amount int64
+	amount uint64
 }
 
-type Store struct {
+type Answers struct {
 	sync.Mutex
 	arr map[int64]*Answer
 }
 
-func newStore() *Store {
-	return &Store{
+func newAnswers() *Answers {
+	return &Answers{
 		arr: make(map[int64]*Answer),
 	}
 }
 
-func (s *Store) Load(key int64) (*Answer, bool) {
-	s.Lock()
+func (a *Answers) Load(key int64) (*Answer, bool) {
+	a.Lock()
 	// defer s.RUnlock()
-	a, ok := s.arr[key]
-	s.Unlock()
-	return a, ok
+	an, ok := a.arr[key]
+	a.Unlock()
+	return an, ok
 }
 
-func (s *Store) Store(key int64, a *Answer) {
-	s.Lock()
-	s.arr[key] = a
-	s.Unlock()
+func (a *Answers) Store(key int64, an *Answer) {
+	a.Lock()
+	a.arr[key] = an
+	a.Unlock()
 }
 
-func (s *Store) Delete(key int64) {
-	s.Lock()
-	delete(s.arr, key)
-	s.Unlock()
+func (a *Answers) Delete(key int64) {
+	a.Lock()
+	delete(a.arr, key)
+	a.Unlock()
 }
 
 type Wal struct {
@@ -235,12 +269,14 @@ func (w *Wal) Save() bool {
 }
 
 type Queue struct {
+	q *queue.Queue
 	f []*func() (int64, []byte)
 }
 
 func newQueue(num int64) *Queue {
 	q := &Queue{
 		f: make([]*(func() (int64, []byte)), 0, num),
+		q: queue.New(),
 	}
 
 	for i := int64(0); i < num; i++ {
@@ -253,9 +289,15 @@ func newQueue(num int64) *Queue {
 }
 
 func (q *Queue) GetBatch(count int64) []*func() (int64, []byte) {
-	return q.f
+	qlsInterface := q.q.PopHeadList(int(count))
+	qlsFunctions := make([](*func() (int64, []byte)), 0, len(qlsInterface))
+
+	for _, qli := range qlsInterface {
+		qlsFunctions = append(qlsFunctions, qli.(*func() (int64, []byte)))
+	}
+	return qlsFunctions
 }
 
-func (q *Queue) PushTail(que *Query) bool { // Mock !
-	return true
+func (q *Queue) PushTail(qLambda *func() (int64, []byte)) bool { // Mock !
+	return q.q.PushTail(qLambda)
 }

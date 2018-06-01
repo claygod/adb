@@ -11,8 +11,7 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/claygod/transaction"
+	// "github.com/claygod/adb/transaction"
 )
 
 func BenchmarkFsyncSequense(b *testing.B) {
@@ -235,11 +234,11 @@ func BenchmarkDoTransactionParallel(b *testing.B) {
 func Benchmark12Parallel(b *testing.B) {
 	b.StopTimer()
 
-	tc := transaction.New()
-	if !tc.Start() {
-		// t.Error("Now the start is possible!")
-	}
-	r := NewReception(&tc)
+	//tc := transaction.New()
+	//if !tc.Start() {
+	// t.Error("Now the start is possible!")
+	//}
+	r := NewReception()
 
 	//cnt := 1000000
 	// prepare
@@ -249,7 +248,7 @@ func Benchmark12Parallel(b *testing.B) {
 	b.StartTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			r.ExeTransaction(&Transaction{}) // tArray[i]
+			r.ExeTransaction(&Order{}) // tArray[i]
 			//i++
 		}
 	})
@@ -257,11 +256,11 @@ func Benchmark12Parallel(b *testing.B) {
 
 func Benchmark12Sequence(b *testing.B) {
 	b.StopTimer()
-	tc := transaction.New()
-	if !tc.Start() {
-		// t.Error("Now the start is possible!")
-	}
-	r := NewReception(&tc)
+	//tc := transaction.New()
+	//if !tc.Start() {
+	// t.Error("Now the start is possible!")
+	//}
+	r := NewReception()
 
 	//cnt := 1000000
 	// prepare
@@ -274,7 +273,7 @@ func Benchmark12Sequence(b *testing.B) {
 		//	return
 		//}
 		//go r.DoTransaction(tArray[i], aArray[i])
-		r.ExeTransaction(&Transaction{}) // tArray[i])
+		r.ExeTransaction(&Order{}) // tArray[i])
 	}
 }
 
@@ -328,7 +327,7 @@ func ForTestGenStringArray(num int) string {
 	return out
 }
 
-func ForTestExeTransaction(r *Reception, t *Transaction, wg *sync.WaitGroup) {
+func ForTestExeTransaction(r *Reception, t *Order, wg *sync.WaitGroup) {
 	r.ExeTransaction(t)
 	wg.Done()
 }
@@ -344,10 +343,10 @@ func ForTestGenAnswersArray(cnt int) []**Answer {
 	return aArray
 }
 
-func ForTestGenTransactionsArray(cnt int) []*Transaction {
-	tArray := make([]*Transaction, 0, cnt)
+func ForTestGenTransactionsArray(cnt int) []*Order {
+	tArray := make([]*Order, 0, cnt)
 	for i := 0; i < cnt; i++ {
-		tr := &Transaction{}
+		tr := &Order{}
 		tArray = append(tArray, tr)
 	}
 	return tArray
@@ -356,13 +355,13 @@ func ForTestGenTransactionsArray(cnt int) []*Transaction {
 func ForTestGenQueryArray(cnt int) []*Query {
 	qArray := make([]*Query, 0, cnt)
 	for i := 0; i < cnt; i++ {
-		tr := &Transaction{}
+		tr := &Order{}
 		//p := &Answer{}
 		//var a **Answer = &p
 		//p = nil
 
 		q := &Query{
-			t: tr,
+			order: tr,
 			//a: a,
 		}
 

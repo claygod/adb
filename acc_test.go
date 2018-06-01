@@ -5,13 +5,32 @@ package adb
 // Copyright © 2017-2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
-	"fmt"
+	//"fmt"
 	"testing"
-	"time"
-
-	"github.com/claygod/transaction"
+	//"time"
+	// "github.com/claygod/adb/transaction"
 )
 
+func TestTime1000000Trans(t *testing.T) {
+
+	//tc := transaction.New()
+	//if !tc.Start() {
+	// t.Error("Now the start is possible!")
+	//}
+	r := NewReception()
+	r.accounts.AddAccount("111")
+	r.accounts.AddAccount("112")
+	p1 := &Part{id: "111", key: "USD", amount: 0}
+	p2 := &Part{id: "112", key: "USD", amount: 5}
+	minus := []*Part{p1}
+	plus := []*Part{p2}
+	r.ExeTransaction(&Order{
+		minus: minus,
+		plus:  plus,
+	})
+}
+
+/*
 func TestTime1000000Trans(t *testing.T) {
 	tc := transaction.New()
 	if !tc.Start() {
@@ -28,6 +47,7 @@ func TestTime1000000Trans(t *testing.T) {
 		r.ExeTransaction(tArray[i])
 	}
 }
+
 
 func TestCreditPrepare(t *testing.T) {
 	tc := transaction.New()
@@ -57,7 +77,9 @@ func TestCreditPrepare(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	/*
-		t.Error("Blah-blah-blah.")
-	*/
+
 }
+*/
+/*
+	t.Error("Blah-blah-blah.")
+*/
