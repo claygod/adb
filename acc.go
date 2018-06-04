@@ -56,7 +56,7 @@ func NewReception() *Reception {
 		batcher: b,
 		wal:     wal,
 	}
-	b.Start()
+	b.Start(batcher.Sync)
 
 	//for i := 0; i < 256; i++ {
 	//	r.queuesPool[i] = queue.New(sizeBucket)
