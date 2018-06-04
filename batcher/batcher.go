@@ -5,7 +5,7 @@ package batcher
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
-	"fmt"
+	// "fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -17,6 +17,9 @@ const (
 	stateRun int64 = iota
 	stateStop
 )
+
+const Sync bool = true
+const Async bool = false
 
 type Batcher struct {
 	batchSize int64
@@ -36,9 +39,14 @@ func New(wal Wal, queue Queue) *Batcher {
 	}
 }
 
-func (b *Batcher) Start() *Batcher {
+func (b *Batcher) Start(mode bool) *Batcher {
 	if atomic.CompareAndSwapInt64(&b.barrier, stateStop, stateRun) {
-		go b.workerFull()
+		if mode == Sync {
+			go b.workerSync()
+		} else {
+			go b.workerAsync()
+		}
+
 	}
 	return b
 }
@@ -60,12 +68,30 @@ func (b *Batcher) SetBatchSize(size int64) *Batcher {
 	return b
 }
 
-func (b *Batcher) workerFull() {
+func (b *Batcher) workerSync() {
+	for {
+		batch := b.queue.GetBatch(b.batchSize)
+		//fmt.Println(" @052@ ")
+
+		if len(batch) == 0 {
+			runtime.Gosched()
+			continue
+		}
+		for _, in := range batch {
+			b.inputProcessSync(in)
+		}
+		if !b.wal.Save() || b.barrier == stateStop {
+			return
+		}
+	}
+}
+
+func (b *Batcher) workerAsync() {
 	var wg sync.WaitGroup
 	for {
-		fmt.Println(" @051@ ")
+		//fmt.Println(" @051@ ")
 		batch := b.queue.GetBatch(b.batchSize)
-		fmt.Println(" @052@ ")
+		//fmt.Println(" @052@ ")
 
 		if len(batch) == 0 {
 			runtime.Gosched()
@@ -73,11 +99,11 @@ func (b *Batcher) workerFull() {
 		}
 		for _, in := range batch {
 			wg.Add(1)
-			b.inputProcess(in, &wg)
+			b.inputProcessAsync(in, &wg)
 		}
-		fmt.Println(" @054@ ", len(batch))
+		//fmt.Println(" @054@ ", len(batch))
 		wg.Wait()
-		fmt.Println(" @055@ ", len(batch))
+		//fmt.Println(" @055@ ", len(batch))
 		if !b.wal.Save() || b.barrier == stateStop {
 			return
 		}
@@ -94,31 +120,35 @@ func (b *Batcher) workerCut() {
 }
 
 func (b *Batcher) work() {
-	//var wg sync.WaitGroup = b.wg
+	var wg sync.WaitGroup = b.wg
 	batch := b.queue.GetBatch(b.batchSize)
 	if len(batch) == 0 {
 		runtime.Gosched()
 		return
 	}
 	for _, in := range batch {
-		//wg.Add(1)
-		b.inputProcess(in, nil) // &wg
+		wg.Add(1)
+		b.inputProcessAsync(in, &wg) //
 	}
-	//wg.Wait()
+	wg.Wait()
 }
 
 /*
-inputProcess
+inputProcessAsync
 
 Return:
 	- key (int64) - number executed tasks
 	- answer ([]byte) - gob-serialize
 */
-func (b *Batcher) inputProcess(in *func() (int64, []byte), wg *sync.WaitGroup) {
-	fmt.Println(" @053@ ")
+func (b *Batcher) inputProcessAsync(in *func() (int64, []byte), wg *sync.WaitGroup) {
+	//fmt.Println(" @053@ ")
 	b.wal.Log((*in)())
-	fmt.Println(" @053@ ___")
-	//wg.Done()
+	//fmt.Println(" @053@ ___")
+	wg.Done()
+}
+
+func (b *Batcher) inputProcessSync(in *func() (int64, []byte)) {
+	b.wal.Log((*in)())
 }
 
 /*

@@ -12,7 +12,7 @@ import (
 
 func BenchmarkWorkCycleSequence(b *testing.B) {
 	b.StopTimer()
-	batch := New(newMockWal(), newMockQueue(1)).SetBatchSize(1).Start()
+	batch := New(newMockWal(), newMockQueue(1)).SetBatchSize(1).Start(Sync)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		batch.work()
@@ -21,7 +21,7 @@ func BenchmarkWorkCycleSequence(b *testing.B) {
 
 func BenchmarkWork16x1Sequence(b *testing.B) {
 	b.StopTimer()
-	batch := New(newMockWal(), newMockQueue(16)).SetBatchSize(1).Start()
+	batch := New(newMockWal(), newMockQueue(16)).SetBatchSize(1).Start(Sync)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		batch.work()
@@ -30,7 +30,7 @@ func BenchmarkWork16x1Sequence(b *testing.B) {
 
 func BenchmarkWork16x8Sequence(b *testing.B) {
 	b.StopTimer()
-	batch := New(newMockWal(), newMockQueue(16)).SetBatchSize(8).Start()
+	batch := New(newMockWal(), newMockQueue(16)).SetBatchSize(8).Start(Sync)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		batch.work()
@@ -39,7 +39,7 @@ func BenchmarkWork16x8Sequence(b *testing.B) {
 
 func BenchmarkWork64x32Sequence(b *testing.B) {
 	b.StopTimer()
-	batch := New(newMockWal(), newMockQueue(64)).SetBatchSize(32).Start()
+	batch := New(newMockWal(), newMockQueue(64)).SetBatchSize(32).Start(Async)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		batch.work()
@@ -47,7 +47,7 @@ func BenchmarkWork64x32Sequence(b *testing.B) {
 }
 func BenchmarkWork64x64Sequence(b *testing.B) {
 	b.StopTimer()
-	batch := New(newMockWal(), newMockQueue(64)).SetBatchSize(64).Start()
+	batch := New(newMockWal(), newMockQueue(64)).SetBatchSize(64).Start(Sync)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		batch.work()
@@ -57,7 +57,7 @@ func BenchmarkWork64x64Sequence(b *testing.B) {
 /*
 func BenchmarkWorkCycleParallel(b *testing.B) {
 	b.StopTimer()
-	batch := NewBatcher(newMockWal(), newMockQueue()).SetBatchSize(1).Start()
+	batch := NewBatcher(newMockWal(), newMockQueue()).SetBatchSize(1).Start(Sync)
 	b.StartTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
