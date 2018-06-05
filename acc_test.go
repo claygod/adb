@@ -20,6 +20,8 @@ func TestTime1000000Trans(t *testing.T) {
 	r := NewReception()
 	r.accounts.AddAccount("111")
 	r.accounts.AddAccount("112")
+	r.accounts.Account("111").Balance("USD").Debit(9)
+	r.accounts.Account("112").Balance("USD").Debit(9)
 	p1 := &Part{Id: "111", Key: "USD", Amount: 0}
 	p2 := &Part{Id: "112", Key: "USD", Amount: 5}
 	minus := []*Part{p1}

@@ -100,25 +100,65 @@ func (r *Reception) DoTransaction(order *Order, num int64) { // , a **Answer
 	qLambda := func() (int64, []byte) {
 		replyBalances := make(map[string]map[string]account.Balance)
 		//toLog := ""
-		fmt.Println(" @e01@ начат цикл")
-		for i := 0; i < len(order.Credit); i++ {
-			acc := r.accounts.Account(order.Credit[i].Id)
-			if acc == nil {
-				r.Rollback(i, order)
-				fmt.Println(" @e01@ --", num)
-				return num, []byte("") // тут логовое сообщение для ошибочной транзакции
-			}
-
-			balance, err := acc.Balance(order.Credit[i].Key).WriteOff(order.Credit[i].Amount)
-			if err != nil {
-				r.Rollback(i+1, order)
-				fmt.Println(" @e02@ --", num)
-				return num, []byte("") // тут логовое сообщение для ошибочной транзакции
-			}
-
-			r.balancesAddBalance(order.Credit[i].Id, order.Credit[i].Key, replyBalances, balance)
-			r.answers.Store(num, &Answer{code: 200}) // возвращаем положительный ответ
+		// Block
+		fmt.Println(" @e01@ начата блокировка")
+		if count, err := r.doBlock(order, replyBalances); err != nil {
+			r.rollbackBlock(count, order)
+			r.answers.Store(num, &Answer{code: 404})
+			return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
 		}
+		// Unblock
+		fmt.Println(" @e01@ начата Unblock")
+		if count, err := r.doUnblock(order, replyBalances); err != nil {
+			r.rollbackBlock(len(order.Block), order)
+			r.rollbackUnblock(count, order)
+			r.answers.Store(num, &Answer{code: 404})
+			return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+		}
+		// Credit
+		fmt.Println(" @e01@ начата Credit")
+		if count, err := r.doCredit(order, replyBalances); err != nil {
+			r.rollbackBlock(len(order.Block), order)
+			r.rollbackUnblock(len(order.Block), order)
+			r.rollbackCredit(count, order)
+			r.answers.Store(num, &Answer{code: 404})
+			return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+		}
+		// Debit
+		fmt.Println(" @e01@ начата Credit")
+		if count, err := r.doCredit(order, replyBalances); err != nil {
+			r.rollbackBlock(len(order.Block), order)
+			r.rollbackUnblock(len(order.Block), order)
+			r.rollbackCredit(len(order.Block), order)
+			r.rollbackDebit(count, order)
+			r.answers.Store(num, &Answer{code: 404})
+			return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+		}
+
+		r.answers.Store(num, &Answer{code: 200, balance: replyBalances})
+
+		fmt.Println(" @e01@ начат цикл")
+		/*
+			for i := 0; i < len(order.Credit); i++ {
+
+				acc := r.accounts.Account(order.Credit[i].Id)
+				if acc == nil {
+					r.Rollback(i, order)
+					fmt.Println(" @e01@ --", num)
+					return num, []byte("") // тут логовое сообщение для ошибочной транзакции
+				}
+
+				balance, err := acc.Balance(order.Credit[i].Key).WriteOff(order.Credit[i].Amount)
+				if err != nil {
+					r.Rollback(i+1, order)
+					fmt.Println(" @e02@ --", num)
+					return num, []byte("") // тут логовое сообщение для ошибочной транзакции
+				}
+
+				r.balancesAddBalance(order.Credit[i].Id, order.Credit[i].Key, replyBalances, balance)
+				r.answers.Store(num, &Answer{code: 200}) // возвращаем положительный ответ
+			}
+		*/
 		fmt.Println(" замыкание запущено под номером: ", num)
 		return num, logBytes
 	}
@@ -149,6 +189,83 @@ func (r *Reception) orderToLog(order *Order) ([]byte, error) {
 	return orderGob.Bytes(), nil
 }
 
+/*
+func (r *Reception) doBlock222(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+	//list := order.Unblock
+	for i := 0; i < len(order.Block); i++ {
+		acc := r.accounts.Account(order.Block[i].Id)
+		if acc == nil {
+			return i, fmt.Errorf("Account %s not found")
+		}
+		balance, err := acc.Balance(order.Block[i].Key).Block(order.Hash, order.Block[i].Amount)
+		if err != nil {
+			return i, err
+		}
+		r.balancesAddBalance(order.Credit[i].Id, order.Credit[i].Key, replyBalances, balance)
+	}
+	return 0, nil
+}
+*/
+func (r *Reception) doBlock(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+	for i, part := range order.Block {
+		acc := r.accounts.Account(part.Id)
+		if acc == nil {
+			return i - 1, fmt.Errorf("Account %s not found")
+		}
+		balance, err := acc.Balance(part.Key).Block(order.Hash, part.Amount)
+		if err != nil {
+			return i, err
+		}
+		r.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
+	}
+	return 0, nil
+}
+
+func (r *Reception) doUnblock(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+	for i, part := range order.Unblock {
+		acc := r.accounts.Account(part.Id)
+		if acc == nil {
+			return i - 1, fmt.Errorf("Account %s not found")
+		}
+		balance, err := acc.Balance(part.Key).Unblock(order.Hash, part.Amount)
+		if err != nil {
+			return i, err
+		}
+		r.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
+	}
+	return 0, nil
+}
+
+func (r *Reception) doCredit(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+	for i, part := range order.Credit {
+		acc := r.accounts.Account(part.Id)
+		if acc == nil {
+			return i - 1, fmt.Errorf("Account %s not found")
+		}
+		balance, err := acc.Balance(part.Key).Credit(order.Hash, part.Amount)
+		if err != nil {
+			return i, err
+		}
+		r.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
+	}
+	return 0, nil
+}
+
+func (r *Reception) doDebit(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+	for i, part := range order.Debit {
+		acc := r.accounts.Account(part.Id)
+		if acc == nil {
+			return i - 1, fmt.Errorf("Account %s not found")
+		}
+		balance, err := acc.Balance(part.Key).Debit(part.Amount)
+		if err != nil {
+			return i, err
+		}
+		r.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
+	}
+	return 0, nil
+}
+
 func (r *Reception) rollbackBlock(num int, order *Order) {
 	for i := 0; i < num; i++ {
 		r.accounts.Account(order.Block[i].Id).
@@ -165,7 +282,7 @@ func (r *Reception) rollbackUnblock(num int, order *Order) {
 	}
 }
 
-func (r *Reception) rollbackCdedit(num int, order *Order) {
+func (r *Reception) rollbackCredit(num int, order *Order) {
 	for i := 0; i < num; i++ {
 		r.accounts.Account(order.Block[i].Id).
 			Balance(order.Block[i].Key).
@@ -173,6 +290,13 @@ func (r *Reception) rollbackCdedit(num int, order *Order) {
 		r.accounts.Account(order.Block[i].Id).
 			Balance(order.Block[i].Key).
 			Block(order.Hash, order.Block[i].Amount)
+	}
+}
+func (r *Reception) rollbackDebit(num int, order *Order) {
+	for i := 0; i < num; i++ {
+		r.accounts.Account(order.Block[i].Id).
+			Balance(order.Block[i].Key).
+			WriteOff(order.Block[i].Amount)
 	}
 }
 
