@@ -39,6 +39,6 @@ func (q *Queue) GetBatch(count int64) []*func() (int64, []byte) {
 	return qlsFunctions
 }
 
-func (q *Queue) PushTail(qLambda *func() (int64, []byte)) bool {
-	return q.q.PushTail(qLambda)
+func (q *Queue) AddTransaction(qClosure *func() (int64, []byte)) bool {
+	return q.q.PushTail(qClosure)
 }

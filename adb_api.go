@@ -63,7 +63,7 @@ func (r *Reception) DoTransaction(order *Order, num int64) {
 	}
 	qClosure := r.getClosure(logBytes, order, num)
 	fmt.Println(" @002@ ", num)
-	if !r.queue.PushTail(&qClosure) {
+	if !r.queue.AddTransaction(&qClosure) {
 		r.answers.Store(num, &Answer{code: 404})
 		fmt.Printf("\r\n- отбросили ---- %d \r\n", num)
 	}
