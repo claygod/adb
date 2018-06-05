@@ -12,12 +12,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	// "unsafe"
 
 	"github.com/claygod/adb/account"
 	"github.com/claygod/adb/batcher"
 	"github.com/claygod/adb/queue"
-	// "github.com/claygod/adb/transaction"
 )
 
 // Hasp state
@@ -25,19 +23,14 @@ const (
 	stateClosed int64 = iota
 	stateOpen
 )
-
-// const permitError int64 = -2147483647
 const sizeBucket int64 = 256
 
 type Reception struct {
-	// sync.Mutex
-	counter  int64
-	accounts *Accounts
-	answers  *Answers //sync.Map
-	//bucket     *Bucket
+	counter    int64
+	accounts   *Accounts
+	answers    *Answers
 	workerStop int64
-	//tCore      *transaction.Core
-	queue *Queue
+	queue      *Queue
 	//queuesPool [256]*queue.Queue
 	batcher *batcher.Batcher
 	wal     *Wal
@@ -45,27 +38,20 @@ type Reception struct {
 
 func NewReception() *Reception {
 	wal := newWal()
-	q := newQueue(sizeBucket * 32) // queue.New(sizeBucket * 32)
-	b := batcher.New(wal, q)       // .SetBatchSize(sizeBucket * 8).Start()
-	// b := NewBucket()
+	q := newQueue(sizeBucket * 32)
+	b := batcher.New(wal, q)
 	r := &Reception{
 		accounts: newAccounts(),
 		answers:  newAnswers(),
-		//tCore:    tc,
-		queue:   q,
-		batcher: b,
-		wal:     wal,
+		queue:    q,
+		batcher:  b,
+		wal:      wal,
 	}
-	b.Start(batcher.Sync)
+	b.SetBatchSize(sizeBucket * 8).Start(batcher.Sync)
 
 	//for i := 0; i < 256; i++ {
 	//	r.queuesPool[i] = queue.New(sizeBucket)
 	//}
-
-	//go r.worker(0)
-	// go r.worker(1)
-	//time.Sleep(100000 * time.Microsecond)
-	//go r.worker(1)
 	return r
 }
 
@@ -76,19 +62,7 @@ func (r *Reception) ExeTransaction(order *Order) *Answer {
 	return r.GetAnswer(num)
 }
 
-func (r *Reception) DoTransaction(order *Order, num int64) { // , a **Answer
-	// num := atomic.AddInt64(&r.counter, 1)
-	// var orderGob bytes.Buffer // Stand-in for the network.
-
-	// Create an encoder and send a value.
-	/*
-		enc := gob.NewEncoder(&orderGob)
-		err := enc.Encode(order)
-		if err != nil {
-			r.store.Store(num, &Answer{code: 404})
-			fmt.Printf("\r\n- отбросили из-за ошибки кодирования - %d \r\n", num)
-		}
-	*/
+func (r *Reception) DoTransaction(order *Order, num int64) {
 	fmt.Println(" @001@ ", num)
 
 	logBytes, err := r.orderToLog(order)
@@ -97,79 +71,83 @@ func (r *Reception) DoTransaction(order *Order, num int64) { // , a **Answer
 		r.answers.Store(num, &Answer{code: 404}) // отрицательный ответ
 		return
 	}
-	qLambda := func() (int64, []byte) {
-		replyBalances := make(map[string]map[string]account.Balance)
-		//toLog := ""
-		// Block
-		fmt.Println(" @e01@ начата блокировка")
-		if count, err := r.doBlock(order, replyBalances); err != nil {
-			r.rollbackBlock(count, order)
-			r.answers.Store(num, &Answer{code: 404})
-			return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
-		}
-		// Unblock
-		fmt.Println(" @e01@ начата Unblock")
-		if count, err := r.doUnblock(order, replyBalances); err != nil {
-			r.rollbackBlock(len(order.Block), order)
-			r.rollbackUnblock(count, order)
-			r.answers.Store(num, &Answer{code: 404})
-			return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
-		}
-		// Credit
-		fmt.Println(" @e01@ начата Credit")
-		if count, err := r.doCredit(order, replyBalances); err != nil {
-			r.rollbackBlock(len(order.Block), order)
-			r.rollbackUnblock(len(order.Block), order)
-			r.rollbackCredit(count, order)
-			r.answers.Store(num, &Answer{code: 404})
-			return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
-		}
-		// Debit
-		fmt.Println(" @e01@ начата Credit")
-		if count, err := r.doCredit(order, replyBalances); err != nil {
-			r.rollbackBlock(len(order.Block), order)
-			r.rollbackUnblock(len(order.Block), order)
-			r.rollbackCredit(len(order.Block), order)
-			r.rollbackDebit(count, order)
-			r.answers.Store(num, &Answer{code: 404})
-			return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
-		}
-
-		r.answers.Store(num, &Answer{code: 200, balance: replyBalances})
-
-		fmt.Println(" @e01@ начат цикл")
-		/*
-			for i := 0; i < len(order.Credit); i++ {
-
-				acc := r.accounts.Account(order.Credit[i].Id)
-				if acc == nil {
-					r.Rollback(i, order)
-					fmt.Println(" @e01@ --", num)
-					return num, []byte("") // тут логовое сообщение для ошибочной транзакции
-				}
-
-				balance, err := acc.Balance(order.Credit[i].Key).WriteOff(order.Credit[i].Amount)
-				if err != nil {
-					r.Rollback(i+1, order)
-					fmt.Println(" @e02@ --", num)
-					return num, []byte("") // тут логовое сообщение для ошибочной транзакции
-				}
-
-				r.balancesAddBalance(order.Credit[i].Id, order.Credit[i].Key, replyBalances, balance)
-				r.answers.Store(num, &Answer{code: 200}) // возвращаем положительный ответ
-			}
-		*/
-		fmt.Println(" замыкание запущено под номером: ", num)
-		return num, logBytes
-	}
+	qClosure := r.getClosure(logBytes, order, num)
 	fmt.Println(" @002@ ", num)
-	if !r.queue.PushTail(&qLambda) {
+	if !r.queue.PushTail(&qClosure) {
 		r.answers.Store(num, &Answer{code: 404})
 		fmt.Printf("\r\n- отбросили ---- %d \r\n", num)
 	}
 	fmt.Println(" @003@ ", num)
 	//return 1
 	return
+}
+
+func (r *Reception) getClosure(logBytes []byte, order *Order, num int64) func() (int64, []byte) {
+	return func() (int64, []byte) {
+		replyBalances := make(map[string]map[string]account.Balance)
+		lenBlock := len(order.Block)
+		lenUnblock := len(order.Unblock)
+		lenCredit := len(order.Credit)
+		lenDebit := len(order.Debit)
+		// Block
+		fmt.Println(" @e01@ начата Block")
+		if lenBlock > 0 {
+			if count, err := r.doBlock(order, replyBalances); err != nil {
+				r.rollbackBlock(count, order)
+				r.answers.Store(num, &Answer{code: 404})
+				return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+			}
+		}
+		// Unblock
+		fmt.Println(" @e01@ начата Unblock")
+		if lenUnblock > 0 {
+			if count, err := r.doUnblock(order, replyBalances); err != nil {
+				if lenBlock > 0 {
+					r.rollbackBlock(len(order.Block), order)
+				}
+				r.rollbackUnblock(count, order)
+				r.answers.Store(num, &Answer{code: 404})
+				return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+			}
+		}
+		// Credit
+		fmt.Println(" @e01@ начата Credit")
+		if lenCredit > 0 {
+			if count, err := r.doCredit(order, replyBalances); err != nil {
+				if lenBlock > 0 {
+					r.rollbackBlock(len(order.Block), order)
+				}
+				if lenUnblock > 0 {
+					r.rollbackUnblock(len(order.Block), order)
+				}
+				r.rollbackCredit(count, order)
+				r.answers.Store(num, &Answer{code: 404})
+				return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+			}
+		}
+		// Debit
+		fmt.Println(" @e01@ начата Debit")
+		if lenDebit > 0 {
+			if count, err := r.doDebit(order, replyBalances); err != nil {
+				if lenBlock > 0 {
+					r.rollbackBlock(len(order.Block), order)
+				}
+				if lenUnblock > 0 {
+					r.rollbackUnblock(len(order.Block), order)
+				}
+				if lenCredit > 0 {
+					r.rollbackCredit(len(order.Block), order)
+				}
+				r.rollbackDebit(count, order)
+				r.answers.Store(num, &Answer{code: 404})
+				return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+			}
+		}
+
+		r.answers.Store(num, &Answer{code: 200, balance: replyBalances})
+		fmt.Println(" замыкание запущено под номером: ", num)
+		return num, logBytes
+	}
 }
 
 func (r *Reception) balancesAddBalance(id string, key string, balances map[string]map[string]account.Balance, balance account.Balance) {
@@ -189,23 +167,6 @@ func (r *Reception) orderToLog(order *Order) ([]byte, error) {
 	return orderGob.Bytes(), nil
 }
 
-/*
-func (r *Reception) doBlock222(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
-	//list := order.Unblock
-	for i := 0; i < len(order.Block); i++ {
-		acc := r.accounts.Account(order.Block[i].Id)
-		if acc == nil {
-			return i, fmt.Errorf("Account %s not found")
-		}
-		balance, err := acc.Balance(order.Block[i].Key).Block(order.Hash, order.Block[i].Amount)
-		if err != nil {
-			return i, err
-		}
-		r.balancesAddBalance(order.Credit[i].Id, order.Credit[i].Key, replyBalances, balance)
-	}
-	return 0, nil
-}
-*/
 func (r *Reception) doBlock(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
 	for i, part := range order.Block {
 		acc := r.accounts.Account(part.Id)
@@ -300,14 +261,6 @@ func (r *Reception) rollbackDebit(num int, order *Order) {
 	}
 }
 
-func (r *Reception) Rollback(num int, order *Order) {
-	for i := 0; i < num; i++ {
-		r.accounts.Account(order.Credit[i].Id).
-			Balance(order.Credit[i].Key).
-			Debit(order.Credit[i].Amount)
-	}
-}
-
 func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
 	fmt.Println(" @031@ ", num)
 	for { //  i := 0; i < 1500000; i++
@@ -330,51 +283,6 @@ func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
 	return nil
 }
 
-/*
-func (r *Reception) worker(level int) {
-	//var shift uint8
-	var wg sync.WaitGroup
-	//var an *Answer = &Answer{code: 200}
-	for {
-		//shift++
-		//b := r.queuesPool[shift].PopHeadList(sizeBucket)
-		// ///////// b := r.queue.PopHeadList(int(sizeBucket))
-		//b := r.queue.PopAll()
-
-		if len(b) == 0 {
-			// fmt.Printf("\r\n- воркер получил пустую очередь- \r\n")
-			runtime.Gosched()
-			// time.Sleep(30 * time.Microsecond)
-			continue
-		}
-		if len(b) > 5 {
-			// fmt.Printf("\r\n- размер очереди- %d \r\n", len(b))
-		}
-		//var logBuf bytes.Buffer
-		for _, q1 := range b {
-			q := q1.(*Query)
-			wg.Add(1)
-			go r.handler(q.t, &wg, q.num, q.log)
-			//r.store.Store(q.num, an) //
-			// тут сохраняем лог
-		}
-		wg.Wait()
-
-		if !r.wal.Save() || r.workerStop == 1 {
-			return
-		}
-		//shift++
-	}
-}
-*/
-func (r *Reception) handler(order *Order, wg *sync.WaitGroup, num int64, log []byte) {
-	r.answers.Store(num, &Answer{code: 200})
-	// if ok
-	r.wal.Log(num, log)
-	// dummy
-	wg.Done()
-}
-
 type Answer struct {
 	code    int64
 	balance map[string]map[string]account.Balance
@@ -384,7 +292,6 @@ type Query struct {
 	num   int64
 	order *Order
 	log   []byte
-	// a   **Answer
 }
 
 type Order struct {
