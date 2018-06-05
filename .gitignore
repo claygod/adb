@@ -1,4 +1,7 @@
 /.git
+.gitignore
 *.go-
+*-
 *.out
 */rezerv
+bench.txt
