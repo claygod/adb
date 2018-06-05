@@ -5,8 +5,8 @@ package adb
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
-	//"bytes"
-	// "encoding/gob"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"runtime"
 	"sync"
@@ -76,7 +76,7 @@ func (r *Reception) ExeTransaction(order *Order) *Answer {
 	return r.GetAnswer(num)
 }
 
-func (r *Reception) DoTransaction(order *Order, num int64) int64 { // , a **Answer
+func (r *Reception) DoTransaction(order *Order, num int64) { // , a **Answer
 	// num := atomic.AddInt64(&r.counter, 1)
 	// var orderGob bytes.Buffer // Stand-in for the network.
 
@@ -90,31 +90,37 @@ func (r *Reception) DoTransaction(order *Order, num int64) int64 { // , a **Answ
 		}
 	*/
 	fmt.Println(" @001@ ", num)
+
+	logBytes, err := r.orderToLog(order)
+	if err != nil {
+		fmt.Println(" - ошибка кодирования лога ", num, err)
+		r.answers.Store(num, &Answer{code: 404}) // отрицательный ответ
+		return
+	}
 	qLambda := func() (int64, []byte) {
-		newBalances := make([]account.Balance, 0, len(order.minus)+len(order.plus))
-		toLog := ""
+		replyBalances := make(map[string]map[string]account.Balance)
+		//toLog := ""
 		fmt.Println(" @e01@ начат цикл")
-		for i := 0; i < len(order.minus); i++ {
-			acc := r.accounts.Account(order.minus[i].id)
+		for i := 0; i < len(order.Credit); i++ {
+			acc := r.accounts.Account(order.Credit[i].Id)
 			if acc == nil {
 				r.Rollback(i, order)
 				fmt.Println(" @e01@ --", num)
 				return num, []byte("") // тут логовое сообщение для ошибочной транзакции
 			}
 
-			balance, err := acc.Balance(order.minus[i].key).
-				WriteOff(order.minus[i].amount)
+			balance, err := acc.Balance(order.Credit[i].Key).WriteOff(order.Credit[i].Amount)
 			if err != nil {
 				r.Rollback(i+1, order)
 				fmt.Println(" @e02@ --", num)
 				return num, []byte("") // тут логовое сообщение для ошибочной транзакции
 			}
-			newBalances = append(newBalances, balance)
-			toLog += "12345:373474376:USD:+:10"      // example
+
+			r.balancesAddBalance(order.Credit[i].Id, order.Credit[i].Key, replyBalances, balance)
 			r.answers.Store(num, &Answer{code: 200}) // возвращаем положительный ответ
-			fmt.Println(" замыкание запущено под номером: ", num)
 		}
-		return num, []byte(toLog)
+		fmt.Println(" замыкание запущено под номером: ", num)
+		return num, logBytes
 	}
 	fmt.Println(" @002@ ", num)
 	if !r.queue.PushTail(&qLambda) {
@@ -123,13 +129,58 @@ func (r *Reception) DoTransaction(order *Order, num int64) int64 { // , a **Answ
 	}
 	fmt.Println(" @003@ ", num)
 	//return 1
-	return num
+	return
 }
+
+func (r *Reception) balancesAddBalance(id string, key string, balances map[string]map[string]account.Balance, balance account.Balance) {
+	if _, ok := balances[id]; !ok {
+		balances[id] = make(map[string]account.Balance)
+	}
+	balances[id][key] = balance
+}
+
+func (r *Reception) orderToLog(order *Order) ([]byte, error) {
+	var orderGob bytes.Buffer
+	enc := gob.NewEncoder(&orderGob)
+	err := enc.Encode(order)
+	if err != nil {
+		return nil, err
+	}
+	return orderGob.Bytes(), nil
+}
+
+func (r *Reception) rollbackBlock(num int, order *Order) {
+	for i := 0; i < num; i++ {
+		r.accounts.Account(order.Block[i].Id).
+			Balance(order.Block[i].Key).
+			Unblock(order.Hash, order.Block[i].Amount)
+	}
+}
+
+func (r *Reception) rollbackUnblock(num int, order *Order) {
+	for i := 0; i < num; i++ {
+		r.accounts.Account(order.Block[i].Id).
+			Balance(order.Block[i].Key).
+			Block(order.Hash, order.Block[i].Amount)
+	}
+}
+
+func (r *Reception) rollbackCdedit(num int, order *Order) {
+	for i := 0; i < num; i++ {
+		r.accounts.Account(order.Block[i].Id).
+			Balance(order.Block[i].Key).
+			Debit(order.Block[i].Amount)
+		r.accounts.Account(order.Block[i].Id).
+			Balance(order.Block[i].Key).
+			Block(order.Hash, order.Block[i].Amount)
+	}
+}
+
 func (r *Reception) Rollback(num int, order *Order) {
 	for i := 0; i < num; i++ {
-		r.accounts.Account(order.minus[i].id).
-			Balance(order.minus[i].key).
-			Debit(order.minus[i].amount)
+		r.accounts.Account(order.Credit[i].Id).
+			Balance(order.Credit[i].Key).
+			Debit(order.Credit[i].Amount)
 	}
 }
 
@@ -201,7 +252,8 @@ func (r *Reception) handler(order *Order, wg *sync.WaitGroup, num int64, log []b
 }
 
 type Answer struct {
-	code int64
+	code    int64
+	balance map[string]map[string]account.Balance
 }
 
 type Query struct {
@@ -212,14 +264,17 @@ type Query struct {
 }
 
 type Order struct {
-	plus  []*Part
-	minus []*Part
+	Hash    string
+	Debit   []*Part
+	Credit  []*Part
+	Block   []*Part
+	Unblock []*Part
 }
 
 type Part struct {
-	id     string
-	key    string
-	amount uint64
+	Id     string
+	Key    string
+	Amount uint64
 }
 
 type Answers struct {

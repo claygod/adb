@@ -5,7 +5,7 @@ package batcher
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
-	// "fmt"
+	"fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -42,11 +42,12 @@ func New(wal Wal, queue Queue) *Batcher {
 func (b *Batcher) Start(mode bool) *Batcher {
 	if atomic.CompareAndSwapInt64(&b.barrier, stateStop, stateRun) {
 		if mode == Sync {
+			fmt.Println(" @053-Sync@ ")
 			go b.workerSync()
 		} else {
+			fmt.Println(" @053-Async@ ")
 			go b.workerAsync()
 		}
-
 	}
 	return b
 }
@@ -71,7 +72,7 @@ func (b *Batcher) SetBatchSize(size int64) *Batcher {
 func (b *Batcher) workerSync() {
 	for {
 		batch := b.queue.GetBatch(b.batchSize)
-		//fmt.Println(" @052@ ")
+		// fmt.Println(" @052@ ")
 
 		if len(batch) == 0 {
 			runtime.Gosched()
@@ -148,7 +149,9 @@ func (b *Batcher) inputProcessAsync(in *func() (int64, []byte), wg *sync.WaitGro
 }
 
 func (b *Batcher) inputProcessSync(in *func() (int64, []byte)) {
+	fmt.Println(" @053--1@ ")
 	b.wal.Log((*in)())
+	fmt.Println(" @053--2@ ")
 }
 
 /*
