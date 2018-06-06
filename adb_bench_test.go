@@ -14,6 +14,8 @@ import (
 	// "github.com/claygod/adb/transaction"
 )
 
+const filePatch = "./test.txt"
+
 func BenchmarkFsyncSequense(b *testing.B) {
 	b.StopTimer()
 	text := ForTestGenStringArray(256)
@@ -238,7 +240,7 @@ func Benchmark12Parallel(b *testing.B) {
 	//if !tc.Start() {
 	// t.Error("Now the start is possible!")
 	//}
-	r := NewReception()
+	r, _ := NewReception(filePatch)
 
 	//cnt := 1000000
 	// prepare
@@ -260,7 +262,7 @@ func Benchmark12Sequence(b *testing.B) {
 	//if !tc.Start() {
 	// t.Error("Now the start is possible!")
 	//}
-	r := NewReception()
+	r, _ := NewReception(filePatch)
 
 	//cnt := 1000000
 	// prepare

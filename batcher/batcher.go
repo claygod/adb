@@ -81,7 +81,7 @@ func (b *Batcher) workerSync() {
 		for _, in := range batch {
 			b.inputProcessSync(in)
 		}
-		if !b.wal.Save() || b.barrier == stateStop {
+		if b.wal.Save() != nil || b.barrier == stateStop {
 			return
 		}
 	}
@@ -105,7 +105,7 @@ func (b *Batcher) workerAsync() {
 		//fmt.Println(" @054@ ", len(batch))
 		wg.Wait()
 		//fmt.Println(" @055@ ", len(batch))
-		if !b.wal.Save() || b.barrier == stateStop {
+		if b.wal.Save() != nil || b.barrier == stateStop {
 			return
 		}
 	}
@@ -114,7 +114,7 @@ func (b *Batcher) workerAsync() {
 func (b *Batcher) workerCut() {
 	for {
 		b.work()
-		if !b.wal.Save() || b.barrier == stateStop {
+		if b.wal.Save() != nil || b.barrier == stateStop {
 			return
 		}
 	}
@@ -164,8 +164,9 @@ type Queue interface {
 }
 
 type Wal interface {
-	Log(int64, []byte) // key, log
-	Save() bool
+	Log(int64, []byte) error // key, log
+	Save() error
+	Close() error
 }
 
 /*

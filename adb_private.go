@@ -19,6 +19,8 @@ const (
 )
 const sizeBucket int64 = 256
 
+const walSeparator string = "|"
+
 func (r *Reception) getClosure(logBytes []byte, order *Order, num int64) func() (int64, []byte) {
 	return func() (int64, []byte) {
 		replyBalances := make(map[string]map[string]account.Balance)

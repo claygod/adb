@@ -13,6 +13,7 @@ import (
 
 	"github.com/claygod/adb/account"
 	"github.com/claygod/adb/batcher"
+	"github.com/claygod/adb/wal"
 )
 
 type Reception struct {
@@ -23,11 +24,14 @@ type Reception struct {
 	queue      *Queue
 	//queuesPool [256]*queue.Queue
 	batcher *batcher.Batcher
-	wal     *Wal
+	wal     *wal.Wal
 }
 
-func NewReception() *Reception {
-	wal := newWal()
+func NewReception(patch string) (*Reception, error) {
+	wal, err := wal.New(patch, walSeparator) //newWal()
+	if err != nil {
+		return nil, err
+	}
 	q := newQueue(sizeBucket * 32)
 	b := batcher.New(wal, q)
 	r := &Reception{
@@ -42,7 +46,7 @@ func NewReception() *Reception {
 	//for i := 0; i < 256; i++ {
 	//	r.queuesPool[i] = queue.New(sizeBucket)
 	//}
-	return r
+	return r, nil
 }
 
 func (r *Reception) ExeTransaction(order *Order) *Answer {
@@ -127,9 +131,14 @@ func newWal() *Wal {
 	return &Wal{}
 }
 
-func (w *Wal) Log(key int64, b []byte) {
+func (w *Wal) Log(key int64, b []byte) error {
+	return nil
 }
 
-func (w *Wal) Save() bool {
-	return true
+func (w *Wal) Save() error {
+	return nil
+}
+
+func (w *Wal) Close() error {
+	return nil
 }

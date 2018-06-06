@@ -17,7 +17,7 @@ func TestTime1000000Trans(t *testing.T) {
 	//if !tc.Start() {
 	// t.Error("Now the start is possible!")
 	//}
-	r := NewReception()
+	r, _ := NewReception(filePatch)
 	r.accounts.AddAccount("111")
 	r.accounts.AddAccount("112")
 	r.accounts.Account("111").Balance("USD").Debit(9)

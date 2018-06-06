@@ -29,14 +29,20 @@ func newMockWal() *mockWal {
 	return &mockWal{}
 }
 
-func (w *mockWal) Log(key int64, log []byte) {
+func (w *mockWal) Log(key int64, log []byte) error {
 	atomic.AddInt64(&w.counter, 1)
 	// fmt.Println("---", w.counter, " ", key, " ", log)
+	return nil
 }
 
-func (w *mockWal) Save() bool {
+func (w *mockWal) Save() error {
 	atomic.StoreInt64(&w.counter, 0)
-	return true
+	return nil
+}
+
+func (w *mockWal) Close() error {
+	atomic.StoreInt64(&w.counter, 0)
+	return nil
 }
 
 type mockQueue struct {
