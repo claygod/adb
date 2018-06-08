@@ -6,16 +6,80 @@ package adb
 
 import (
 	// "fmt"
-	"os"
-	// "strconv"
+	//"os"
+	"strconv"
 	"sync"
 	"testing"
-	"time"
+	//"time"
 	// "github.com/claygod/adb/transaction"
 )
 
 const filePatch = "./test.txt"
 
+func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
+	b.StopTimer()
+	r, _ := NewReception(filePatch)
+	for i := 0; i < 256; i++ {
+		r.accounts.AddAccount(strconv.Itoa(i))
+		// r.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
+
+	}
+	p := &Part{Id: "111", Key: "USD", Amount: 1}
+	// minus := []*Part{p}
+	plus := []*Part{p}
+	order := &Order{
+		// Credit: minus,
+		Debit: plus,
+	}
+	r.ExeTransaction(&Order{
+		// Credit: minus,
+		Debit: plus,
+	})
+	i := 0
+	b.StartTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			order.Debit[0].Id = strconv.Itoa(int(byte(i)))
+			r.ExeTransaction(order)
+			i++
+		}
+	})
+
+	for i := 0; i < b.N; i++ {
+		order.Debit[0].Id = strconv.Itoa(int(byte(i)))
+		r.ExeTransaction(order)
+	}
+}
+
+func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
+	b.StopTimer()
+	r, _ := NewReception(filePatch)
+	for i := 0; i < 256; i++ {
+		r.accounts.AddAccount(strconv.Itoa(i))
+		r.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
+
+	}
+	p := &Part{Id: "111", Key: "USD", Amount: 1}
+	// minus := []*Part{p}
+	plus := []*Part{p}
+	order := &Order{
+		// Credit: minus,
+		Debit: plus,
+	}
+	r.ExeTransaction(&Order{
+		// Credit: minus,
+		Debit: plus,
+	})
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		order.Debit[0].Id = strconv.Itoa(int(byte(i)))
+		r.ExeTransaction(order)
+	}
+}
+
+/*
 func BenchmarkFsyncSequense(b *testing.B) {
 	b.StopTimer()
 	text := ForTestGenStringArray(256)
@@ -35,7 +99,7 @@ func BenchmarkFsyncSequense(b *testing.B) {
 		fv.Sync()
 	}
 }
-
+*/
 /*
 func BenchmarkFsync16Sequense(b *testing.B) {
 	b.StopTimer()
@@ -233,6 +297,7 @@ func BenchmarkDoTransactionParallel(b *testing.B) {
 	})
 }
 */
+/*
 func Benchmark12Parallel(b *testing.B) {
 	b.StopTimer()
 
@@ -278,7 +343,7 @@ func Benchmark12Sequence(b *testing.B) {
 		r.ExeTransaction(&Order{}) // tArray[i])
 	}
 }
-
+*/
 /*
 func Benchmark11Sequence(b *testing.B) {
 	b.StopTimer()

@@ -5,13 +5,13 @@ package batcher
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
-	"fmt"
+	// "fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
 )
 
-const batchSize int64 = 256
+const batchSize int64 = 16
 
 const (
 	stateRun int64 = iota
@@ -27,25 +27,40 @@ type Batcher struct {
 	wal       Wal
 	queue     Queue
 	wg        sync.WaitGroup
+	ch        chan *func() (int64, []byte)
 }
 
-func New(wal Wal, queue Queue) *Batcher {
+func New(wal Wal, queue Queue, ch chan *func() (int64, []byte)) *Batcher {
 	return &Batcher{
 		batchSize: batchSize,
 		barrier:   stateStop,
 		wal:       wal,
 		queue:     queue,
 		wg:        sync.WaitGroup{},
+		ch:        ch,
 	}
 }
 
 func (b *Batcher) Start(mode bool) *Batcher {
 	if atomic.CompareAndSwapInt64(&b.barrier, stateStop, stateRun) {
 		if mode == Sync {
-			fmt.Println(" @053-Sync@ ")
+			//fmt.Println(" @053-Sync@ ")
 			go b.workerSync()
 		} else {
-			fmt.Println(" @053-Async@ ")
+			//fmt.Println(" @053-Async@ ")
+			go b.workerAsync()
+		}
+	}
+	return b
+}
+
+func (b *Batcher) StartChain(mode bool) *Batcher {
+	if atomic.CompareAndSwapInt64(&b.barrier, stateStop, stateRun) {
+		if mode == Sync {
+			//fmt.Println(" @053-Sync@ ")
+			go b.workerSyncChan(b.ch)
+		} else {
+			//fmt.Println(" @053-Async@ ")
 			go b.workerAsync()
 		}
 	}
@@ -81,6 +96,29 @@ func (b *Batcher) workerSync() {
 		for _, in := range batch {
 			b.inputProcessSync(in)
 		}
+		if b.wal.Save() != nil || b.barrier == stateStop {
+			return
+		}
+	}
+}
+
+func (b *Batcher) workerSyncChan(ch chan *func() (int64, []byte)) {
+	for {
+		var i int64 = 0
+		for ; i < b.batchSize; i++ {
+			select {
+			case in := <-ch:
+				b.inputProcessSync(in)
+			default:
+				break
+			}
+		}
+
+		if i == 0 {
+			runtime.Gosched()
+			continue
+		}
+
 		if b.wal.Save() != nil || b.barrier == stateStop {
 			return
 		}
@@ -149,9 +187,9 @@ func (b *Batcher) inputProcessAsync(in *func() (int64, []byte), wg *sync.WaitGro
 }
 
 func (b *Batcher) inputProcessSync(in *func() (int64, []byte)) {
-	fmt.Println(" @053--1@ ")
+	//fmt.Println(" @053--1@ ")
 	b.wal.Log((*in)())
-	fmt.Println(" @053--2@ ")
+	//fmt.Println(" @053--2@ ")
 }
 
 /*

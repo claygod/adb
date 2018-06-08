@@ -29,7 +29,7 @@ func (r *Reception) getClosure(logBytes []byte, order *Order, num int64) func() 
 		lenCredit := len(order.Credit)
 		lenDebit := len(order.Debit)
 		// Block
-		fmt.Println(" @e01@ начата Block")
+		//fmt.Println(" @e01@ начата Block")
 		if lenBlock > 0 {
 			if count, err := r.doBlock(order, replyBalances); err != nil {
 				r.rollbackBlock(count, order)
@@ -38,7 +38,7 @@ func (r *Reception) getClosure(logBytes []byte, order *Order, num int64) func() 
 			}
 		}
 		// Unblock
-		fmt.Println(" @e01@ начата Unblock")
+		//fmt.Println(" @e01@ начата Unblock")
 		if lenUnblock > 0 {
 			if count, err := r.doUnblock(order, replyBalances); err != nil {
 				if lenBlock > 0 {
@@ -50,7 +50,7 @@ func (r *Reception) getClosure(logBytes []byte, order *Order, num int64) func() 
 			}
 		}
 		// Credit
-		fmt.Println(" @e01@ начата Credit")
+		//fmt.Println(" @e01@ начата Credit")
 		if lenCredit > 0 {
 			if count, err := r.doCredit(order, replyBalances); err != nil {
 				if lenBlock > 0 {
@@ -65,7 +65,7 @@ func (r *Reception) getClosure(logBytes []byte, order *Order, num int64) func() 
 			}
 		}
 		// Debit
-		fmt.Println(" @e01@ начата Debit")
+		//fmt.Println(" @e01@ начата Debit")
 		if lenDebit > 0 {
 			if count, err := r.doDebit(order, replyBalances); err != nil {
 				if lenBlock > 0 {
@@ -84,7 +84,7 @@ func (r *Reception) getClosure(logBytes []byte, order *Order, num int64) func() 
 		}
 
 		r.answers.Store(num, &Answer{code: 200, balance: replyBalances})
-		fmt.Println(" замыкание запущено под номером: ", num)
+		//fmt.Println(" замыкание запущено под номером: ", num)
 		return num, logBytes
 	}
 }

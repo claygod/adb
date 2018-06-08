@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-	"time"
+	//"time"
 
 	"github.com/claygod/adb/account"
 	"github.com/claygod/adb/batcher"
@@ -25,6 +25,7 @@ type Reception struct {
 	//queuesPool [256]*queue.Queue
 	batcher *batcher.Batcher
 	wal     *wal.Wal
+	ch      chan *func() (int64, []byte)
 }
 
 func NewReception(patch string) (*Reception, error) {
@@ -32,16 +33,20 @@ func NewReception(patch string) (*Reception, error) {
 	if err != nil {
 		return nil, err
 	}
+	ch := make(chan *func() (int64, []byte), 8)
 	q := newQueue(sizeBucket * 32)
-	b := batcher.New(wal, q)
+	b := batcher.New(wal, q, ch)
+
 	r := &Reception{
 		accounts: newAccounts(),
 		answers:  newAnswers(),
 		queue:    q,
 		batcher:  b,
 		wal:      wal,
+		ch:       ch,
 	}
 	b.SetBatchSize(sizeBucket * 8).Start(batcher.Sync)
+	//b.SetBatchSize(sizeBucket * 8).StartChain(batcher.Sync)
 
 	//for i := 0; i < 256; i++ {
 	//	r.queuesPool[i] = queue.New(sizeBucket)
@@ -57,32 +62,35 @@ func (r *Reception) ExeTransaction(order *Order) *Answer {
 }
 
 func (r *Reception) DoTransaction(order *Order, num int64) {
-	fmt.Println(" @001@ ", num)
+	//fmt.Println(" @001@ ", num)
 
 	logBytes, err := r.orderToLog(order)
 	if err != nil {
-		fmt.Println(" - ошибка кодирования лога ", num, err)
+		//fmt.Println(" - ошибка кодирования лога ", num, err)
 		r.answers.Store(num, &Answer{code: 404}) // отрицательный ответ
 		return
 	}
 	qClosure := r.getClosure(logBytes, order, num)
-	fmt.Println(" @002@ ", num)
+	//fmt.Println(" @002@ ", num)
+	//r.ch <- &qClosure
+	//return
+
 	if !r.queue.AddTransaction(&qClosure) {
 		r.answers.Store(num, &Answer{code: 404})
 		fmt.Printf("\r\n- отбросили ---- %d \r\n", num)
 	}
-	fmt.Println(" @003@ ", num)
+	//fmt.Println(" @003@ ", num)
 	//return 1
 	return
 }
 
 func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
-	fmt.Println(" @031@ ", num)
+	//fmt.Println(" @031@ ", num)
 	for { //  i := 0; i < 1500000; i++
-		fmt.Println(" @032@ ", num)
+		//fmt.Println(" @032@ ", num)
 		if a1, ok := r.answers.Load(num); ok {
 			go r.answers.Delete(num)
-			fmt.Println(" @032@ ура, ответ получен! я", num)
+			//fmt.Println(" @032@ ура, ответ получен! я", num)
 			return a1 //.(*Answer)
 		}
 		/*
@@ -91,7 +99,7 @@ func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
 				u = 10000
 			}
 		*/
-		time.Sleep(1000000 * time.Microsecond) //time.Duration(u) *
+		//time.Sleep(1000000 * time.Microsecond) //time.Duration(u) *
 		runtime.Gosched()
 	}
 	fmt.Printf("\r\n- не найден - %d \r\n", num)
