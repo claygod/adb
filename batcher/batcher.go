@@ -5,7 +5,7 @@ package batcher
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
-	"fmt"
+	// "fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -122,28 +122,28 @@ func (b *Batcher) workerSyncChan(ch chan *Task) {
 				f := *t.Main
 				f()
 			default:
-				runtime.Gosched()
+				// runtime.Gosched()
 				i = b.batchSize
-				fmt.Println(" @i---------------------------------@ ", i, " b.batchSize: ", b.batchSize)
+				//fmt.Println(" @i---------------------------------@ ", i, " b.batchSize: ", b.batchSize)
 				//break
 			}
 
-			fmt.Println(" @i@ ", i, " b.batchSize: ", b.batchSize)
+			//fmt.Println(" @i@ ", i, " b.batchSize: ", b.batchSize)
 		}
-		fmt.Println(" i---------------------------------@----------------- ")
-		if len(tasks) > 1 {
-			fmt.Println(" @len batch@ ", len(tasks))
-		}
+		//fmt.Println(" i---------------------------------@----------------- ")
+		//if len(tasks) > 1 {
+		// fmt.Println(" @len batch@ ", len(tasks))
+		//}
 
 		if len(tasks) == 0 {
 			runtime.Gosched()
 			continue
 		}
 
-		for i, t := range tasks {
+		for _, t := range tasks {
 			f := *t.Finish
 			f()
-			fmt.Println(" #i# ", i)
+			// fmt.Println(" #i# ", i)
 		}
 
 		if b.barrier == stateStop { // b.wal.Save() != nil ||

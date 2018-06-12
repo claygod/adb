@@ -7,6 +7,7 @@ package adb
 import (
 	// "fmt"
 	//"os"
+	//"runtime"
 	"strconv"
 	"sync"
 	"testing"
@@ -16,7 +17,6 @@ import (
 
 const filePatch = "./test.txt"
 
-/*
 func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
 	r, _ := NewReception(filePatch)
@@ -36,23 +36,15 @@ func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTr
 		// Credit: minus,
 		Debit: plus,
 	})
-	i := 0
-	b.StartTimer()
 
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			order.Debit[0].Id = strconv.Itoa(int(byte(i)))
-			r.ExeTransaction(order)
-			i++
-		}
-	})
+	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
 		order.Debit[0].Id = strconv.Itoa(int(byte(i)))
 		r.ExeTransaction(order)
 	}
 }
-*/
+
 func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
 	r, _ := NewReception(filePatch)
@@ -72,12 +64,19 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 		// Credit: minus,
 		Debit: plus,
 	})
+	i := 0
+	// runtime.GOMAXPROCS(1)
+	b.SetParallelism(12)
 
 	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		order.Debit[0].Id = strconv.Itoa(int(byte(i)))
-		r.ExeTransaction(order)
-	}
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			order.Debit[0].Id = strconv.Itoa(int(byte(i)))
+			r.ExeTransaction(order)
+			i++
+		}
+	})
 }
 
 /*
