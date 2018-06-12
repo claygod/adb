@@ -56,9 +56,9 @@ func New(args ...int) *Queue {
 func (q *Queue) PushTail(n interface{}) bool {
 	// q.lock()
 	q.m.Lock()
-	defer q.m.Unlock()
+	//defer q.m.Unlock()
 	if q.sizeQueue >= sizeQueueMax { //  || !q.lock()
-		//q.m.Unlock()
+		q.m.Unlock()
 		//q.unlock()
 		return false
 	}
@@ -69,7 +69,7 @@ func (q *Queue) PushTail(n interface{}) bool {
 		q.sizeQueue += q.sizeBlock
 	}
 	//q.unlock() // q.hasp = 0
-	//q.m.Unlock()
+	q.m.Unlock()
 	return true
 }
 

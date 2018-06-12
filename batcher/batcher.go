@@ -5,13 +5,14 @@ package batcher
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
-	// "fmt"
+	"fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
-const batchSize int64 = 16
+const batchSize int64 = 4
 
 const (
 	stateRun int64 = iota
@@ -27,10 +28,10 @@ type Batcher struct {
 	wal       Wal
 	queue     Queue
 	wg        sync.WaitGroup
-	ch        chan *func() (int64, []byte)
+	ch        chan *Task
 }
 
-func New(wal Wal, queue Queue, ch chan *func() (int64, []byte)) *Batcher {
+func New(wal Wal, queue Queue, ch chan *Task) *Batcher {
 	return &Batcher{
 		batchSize: batchSize,
 		barrier:   stateStop,
@@ -80,17 +81,18 @@ func (b *Batcher) Stop() *Batcher {
 }
 
 func (b *Batcher) SetBatchSize(size int64) *Batcher {
-	atomic.StoreInt64(&b.batchSize, stateStop)
+	atomic.StoreInt64(&b.batchSize, size)
 	return b
 }
 
 func (b *Batcher) workerSync() {
 	for {
 		batch := b.queue.GetBatch(b.batchSize)
-		// fmt.Println(" @052@ ")
+		//fmt.Println(" @длина батча@ -- ", len(batch))
 
 		if len(batch) == 0 {
 			runtime.Gosched()
+			time.Sleep(1 * time.Microsecond)
 			continue
 		}
 		for _, in := range batch {
@@ -102,26 +104,53 @@ func (b *Batcher) workerSync() {
 	}
 }
 
-func (b *Batcher) workerSyncChan(ch chan *func() (int64, []byte)) {
+func (b *Batcher) workerSyncChan(ch chan *Task) {
 	for {
-		var i int64 = 0
-		for ; i < b.batchSize; i++ {
+		// var i int64 = 0
+		tasks := make([]*Task, 0, b.batchSize)
+		for i := int64(0); i < b.batchSize; i++ {
+
+			//t := <-ch
+			//tasks = append(tasks, t)
+			//f := *t.Main
+			//f()
+			//time.Sleep(1000 * time.Microsecond)
+
 			select {
-			case in := <-ch:
-				b.inputProcessSync(in)
+			case t := <-ch:
+				tasks = append(tasks, t)
+				f := *t.Main
+				f()
 			default:
-				break
+				runtime.Gosched()
+				i = b.batchSize
+				fmt.Println(" @i---------------------------------@ ", i, " b.batchSize: ", b.batchSize)
+				//break
 			}
+
+			fmt.Println(" @i@ ", i, " b.batchSize: ", b.batchSize)
+		}
+		fmt.Println(" i---------------------------------@----------------- ")
+		if len(tasks) > 1 {
+			fmt.Println(" @len batch@ ", len(tasks))
 		}
 
-		if i == 0 {
+		if len(tasks) == 0 {
 			runtime.Gosched()
 			continue
 		}
 
-		if b.wal.Save() != nil || b.barrier == stateStop {
+		for i, t := range tasks {
+			f := *t.Finish
+			f()
+			fmt.Println(" #i# ", i)
+		}
+
+		if b.barrier == stateStop { // b.wal.Save() != nil ||
 			return
 		}
+
+		//time.Sleep(100 * time.Microsecond)
 	}
 }
 
@@ -187,8 +216,9 @@ func (b *Batcher) inputProcessAsync(in *func() (int64, []byte), wg *sync.WaitGro
 }
 
 func (b *Batcher) inputProcessSync(in *func() (int64, []byte)) {
+	(*in)()
 	//fmt.Println(" @053--1@ ")
-	b.wal.Log((*in)())
+	//b.wal.Log((*in)())
 	//fmt.Println(" @053--2@ ")
 }
 
@@ -221,3 +251,8 @@ type Input struct {
 	context interface{}
 }
 */
+
+type Task struct {
+	Main   *func()
+	Finish *func()
+}

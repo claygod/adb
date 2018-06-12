@@ -12,7 +12,7 @@ import (
 
 func BenchmarkWorkCycleSequence(b *testing.B) {
 	b.StopTimer()
-	ch := make(chan *func() (int64, []byte), 100)
+	ch := make(chan *Task, 100)
 	batch := New(newMockWal(), newMockQueue(1), ch).SetBatchSize(1).Start(Sync)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -22,7 +22,7 @@ func BenchmarkWorkCycleSequence(b *testing.B) {
 
 func BenchmarkWork16x1Sequence(b *testing.B) {
 	b.StopTimer()
-	ch := make(chan *func() (int64, []byte), 100)
+	ch := make(chan *Task, 100)
 	batch := New(newMockWal(), newMockQueue(16), ch).SetBatchSize(1).Start(Sync)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -32,7 +32,7 @@ func BenchmarkWork16x1Sequence(b *testing.B) {
 
 func BenchmarkWork16x8Sequence(b *testing.B) {
 	b.StopTimer()
-	ch := make(chan *func() (int64, []byte), 100)
+	ch := make(chan *Task, 100)
 	batch := New(newMockWal(), newMockQueue(16), ch).SetBatchSize(8).Start(Sync)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -42,7 +42,7 @@ func BenchmarkWork16x8Sequence(b *testing.B) {
 
 func BenchmarkWork64x32Sequence(b *testing.B) {
 	b.StopTimer()
-	ch := make(chan *func() (int64, []byte), 100)
+	ch := make(chan *Task, 100)
 	batch := New(newMockWal(), newMockQueue(64), ch).SetBatchSize(32).Start(Async)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -51,7 +51,7 @@ func BenchmarkWork64x32Sequence(b *testing.B) {
 }
 func BenchmarkWork64x64Sequence(b *testing.B) {
 	b.StopTimer()
-	ch := make(chan *func() (int64, []byte), 100)
+	ch := make(chan *Task, 100)
 	batch := New(newMockWal(), newMockQueue(64), ch).SetBatchSize(64).Start(Sync)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {

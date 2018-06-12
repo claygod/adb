@@ -11,7 +11,7 @@ import (
 
 func TestCallWal(t *testing.T) {
 	w := newMockWal()
-	ch := make(chan *func() (int64, []byte), 100)
+	ch := make(chan *Task, 100)
 	batch := New(w, newMockQueue(1), ch).SetBatchSize(1).Start(Sync)
 	for i := 0; i < 5; i++ {
 		batch.work()

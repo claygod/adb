@@ -56,7 +56,7 @@ func (q *Batchqueue) incrementHead() bool {
 		oldCursor := atomic.LoadUint64(&q.cursor)
 		cursorHead := uint8(oldCursor >> 32)
 		cursorTail := uint8(oldCursor)
-		delta := int(cursorTail+1) - int(cursorHead)
+		//delta := int(cursorTail+1) - int(cursorHead)
 		if cursorHead+1 == cursorTail {
 			// if cursorTail < cursorHead && cursorTail+10 >= cursorHead{
 			return false

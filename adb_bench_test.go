@@ -16,6 +16,7 @@ import (
 
 const filePatch = "./test.txt"
 
+/*
 func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
 	r, _ := NewReception(filePatch)
@@ -51,7 +52,7 @@ func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTr
 		r.ExeTransaction(order)
 	}
 }
-
+*/
 func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
 	r, _ := NewReception(filePatch)

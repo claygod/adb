@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-	//"time"
+	"time"
 
 	"github.com/claygod/adb/account"
 	"github.com/claygod/adb/batcher"
@@ -17,15 +17,15 @@ import (
 )
 
 type Reception struct {
-	counter    int64
-	accounts   *Accounts
-	answers    *Answers
+	counter  int64
+	accounts *Accounts
+	//answers    *Answers
 	workerStop int64
 	queue      *Queue
 	//queuesPool [256]*queue.Queue
 	batcher *batcher.Batcher
 	wal     *wal.Wal
-	ch      chan *func() (int64, []byte)
+	ch      chan *batcher.Task
 }
 
 func NewReception(patch string) (*Reception, error) {
@@ -33,19 +33,20 @@ func NewReception(patch string) (*Reception, error) {
 	if err != nil {
 		return nil, err
 	}
-	ch := make(chan *func() (int64, []byte), 8)
-	q := newQueue(sizeBucket * 32)
+	ch := make(chan *batcher.Task, 8)
+	q := newQueue(sizeBucket * 8)
 	b := batcher.New(wal, q, ch)
 
 	r := &Reception{
 		accounts: newAccounts(),
-		answers:  newAnswers(),
-		queue:    q,
-		batcher:  b,
-		wal:      wal,
-		ch:       ch,
+		//answers:  newAnswers(),
+		queue:   q,
+		batcher: b,
+		wal:     wal,
+		ch:      ch,
 	}
-	b.SetBatchSize(sizeBucket * 8).Start(batcher.Sync)
+	//b.SetBatchSize(sizeBucket).Start(batcher.Sync)
+	b.SetBatchSize(sizeBucket).StartChain(batcher.Sync)
 	//b.SetBatchSize(sizeBucket * 8).StartChain(batcher.Sync)
 
 	//for i := 0; i < 256; i++ {
@@ -56,49 +57,39 @@ func NewReception(patch string) (*Reception, error) {
 
 func (r *Reception) ExeTransaction(order *Order) *Answer {
 	num := atomic.AddInt64(&r.counter, 1)
-	r.DoTransaction(order, num)
-	//time.Sleep(1 * time.Microsecond)
-	return r.GetAnswer(num)
+	ans := r.DoTransaction(order, num)
+	runtime.Gosched()
+	time.Sleep(1 * time.Microsecond)
+	return r.GetAnswer(num, ans)
 }
 
-func (r *Reception) DoTransaction(order *Order, num int64) {
+func (r *Reception) DoTransaction(order *Order, num int64) *Answer {
 	//fmt.Println(" @001@ ", num)
+	ans := &Answer{code: 0}
 
-	logBytes, err := r.orderToLog(order)
-	if err != nil {
-		//fmt.Println(" - ошибка кодирования лога ", num, err)
-		r.answers.Store(num, &Answer{code: 404}) // отрицательный ответ
-		return
-	}
-	qClosure := r.getClosure(logBytes, order, num)
-	//fmt.Println(" @002@ ", num)
-	//r.ch <- &qClosure
-	//return
+	//qClosure := r.getClosure(logBytes, order, num, ans)
+	tsk := r.getTask(order, ans)
 
-	if !r.queue.AddTransaction(&qClosure) {
-		r.answers.Store(num, &Answer{code: 404})
-		fmt.Printf("\r\n- отбросили ---- %d \r\n", num)
-	}
-	//fmt.Println(" @003@ ", num)
-	//return 1
-	return
+	r.ch <- tsk
+
+	//if !r.queue.AddTransaction(&qClosure) {
+	//	ans.code = 404
+	//}
+
+	return ans
 }
 
-func (r *Reception) GetAnswer(num int64) *Answer { // , a **Answer
+func (r *Reception) GetAnswer(num int64, ans *Answer) *Answer { // , a **Answer
+	runtime.Gosched()
+	// return &Answer{code: 404}
 	//fmt.Println(" @031@ ", num)
-	for { //  i := 0; i < 1500000; i++
+	for i := 0; ; i++ { //  i := 0; i < 1500000; i++
 		//fmt.Println(" @032@ ", num)
-		if a1, ok := r.answers.Load(num); ok {
-			go r.answers.Delete(num)
-			//fmt.Println(" @032@ ура, ответ получен! я", num)
-			return a1 //.(*Answer)
+		if atomic.LoadInt64(&ans.code) > 0 {
+			//go r.answers.Delete(num)
+			//fmt.Println(" @032@ ура, ответ получен! на шаге ", i, " код=", ans.code)
+			return ans //.(*Answer)
 		}
-		/*
-			u := i
-			if u > 10000 {
-				u = 10000
-			}
-		*/
 		//time.Sleep(1000000 * time.Microsecond) //time.Duration(u) *
 		runtime.Gosched()
 	}
