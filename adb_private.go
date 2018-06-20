@@ -110,80 +110,6 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 	return t
 }
 
-func (r *Reception) getClosure222(logBytes []byte, order *Order, num int64, ans *Answer) func() (int64, []byte) {
-	return func() (int64, []byte) {
-		replyBalances := make(map[string]map[string]account.Balance)
-		lenBlock := len(order.Block)
-		lenUnblock := len(order.Unblock)
-		lenCredit := len(order.Credit)
-		lenDebit := len(order.Debit)
-		// Block
-		//fmt.Println(" @e01@ начата Block")
-		if lenBlock > 0 {
-			if count, err := r.doBlock(order, replyBalances); err != nil {
-				r.rollbackBlock(count, order)
-				//r.answers.Store(num, &Answer{code: 404})
-				ans.code = 404
-				return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
-			}
-		}
-		// Unblock
-		//fmt.Println(" @e01@ начата Unblock")
-		if lenUnblock > 0 {
-			if count, err := r.doUnblock(order, replyBalances); err != nil {
-				if lenBlock > 0 {
-					r.rollbackBlock(len(order.Block), order)
-				}
-				r.rollbackUnblock(count, order)
-				//r.answers.Store(num, &Answer{code: 404})
-				ans.code = 404
-				return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
-			}
-		}
-		// Credit
-		//fmt.Println(" @e01@ начата Credit")
-		if lenCredit > 0 {
-			if count, err := r.doCredit(order, replyBalances); err != nil {
-				if lenBlock > 0 {
-					r.rollbackBlock(len(order.Block), order)
-				}
-				if lenUnblock > 0 {
-					r.rollbackUnblock(len(order.Block), order)
-				}
-				r.rollbackCredit(count, order)
-				//r.answers.Store(num, &Answer{code: 404})
-				ans.code = 404
-				return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
-			}
-		}
-		// Debit
-		//fmt.Println(" @e01@ начата Debit")
-		if lenDebit > 0 {
-			if count, err := r.doDebit(order, replyBalances); err != nil {
-				if lenBlock > 0 {
-					r.rollbackBlock(len(order.Block), order)
-				}
-				if lenUnblock > 0 {
-					r.rollbackUnblock(len(order.Block), order)
-				}
-				if lenCredit > 0 {
-					r.rollbackCredit(len(order.Block), order)
-				}
-				r.rollbackDebit(count, order)
-				//r.answers.Store(num, &Answer{code: 404})
-				ans.code = 404
-				return num, []byte("") // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
-			}
-		}
-
-		//r.answers.Store(num, &Answer{code: 200, balance: replyBalances})
-		ans.code = 200
-		ans.balance = replyBalances
-		//fmt.Println(" замыкание запущено под номером: ", num)
-		return num, logBytes
-	}
-}
-
 func (r *Reception) balancesAddBalance(id string, key string, balances map[string]map[string]account.Balance, balance account.Balance) {
 	if _, ok := balances[id]; !ok {
 		balances[id] = make(map[string]account.Balance)
@@ -203,10 +129,6 @@ func (r *Reception) orderToLog(order *Order) ([]byte, error) {
 
 func (r *Reception) orderForWal(order *Order) string {
 	var buf bytes.Buffer
-
-	//buf.WriteString(r.time.String())
-	//buf.WriteString(WalSimbolSeparator1)
-	//buf.WriteString(order.Hash)
 
 	for _, part := range order.Block {
 		buf.WriteString(WalSimbolSeparator1)

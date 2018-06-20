@@ -39,10 +39,7 @@ func New(patch string, separator string) (*Wal, error) {
 func (w *Wal) Log(s string) error {
 
 	var buf bytes.Buffer
-	if _, err := buf.WriteString(w.time.String()); err != nil {
-		return err
-	}
-	//if _, err := buf.WriteString(w.separator); err != nil {
+	//if _, err := buf.WriteString(w.time.String()); err != nil {
 	//	return err
 	//}
 	if _, err := buf.WriteString(s); err != nil {
@@ -61,16 +58,6 @@ func (w *Wal) Save() error {
 	w.m.Lock()
 	defer w.m.Unlock()
 	return w.file.Sync()
-	/*
-		if _, err := w.file.Write(w.buf.Bytes()); err != nil {
-			return err
-		}
-		if err := w.file.Sync(); err != nil {
-			return err
-		}
-		w.buf.Reset()
-		return nil
-	*/
 }
 
 func (w *Wal) Close() error {

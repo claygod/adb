@@ -35,8 +35,8 @@ func NewReception(patch string) (*Reception, error) {
 	if err != nil {
 		return nil, err
 	}
-	ch := make(chan *batcher.Task, 256)
-	ch2 := make(chan *batcher.Task, 256)
+	ch := make(chan *batcher.Task, 1024)
+	ch2 := make(chan *batcher.Task, 1024)
 	//q := newQueue(sizeBucket * 16)
 	b := batcher.New(wal, ch, ch2)
 
@@ -63,7 +63,7 @@ func NewReception(patch string) (*Reception, error) {
 func (r *Reception) ExeTransaction(order *Order) *Answer {
 	num := atomic.AddInt64(&r.counter, 1)
 	ans := r.DoTransaction(order, num)
-	runtime.Gosched()
+	// runtime.Gosched()
 	//time.Sleep(1 * time.Microsecond)
 	return r.GetAnswer(num, ans)
 }
