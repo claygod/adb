@@ -5,7 +5,7 @@ package batchqueue
 // Copyright © 2016 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 import (
 	//"runtime"
-	"fmt"
+	//"fmt"
 	"sync/atomic"
 )
 
@@ -48,12 +48,12 @@ func (q *Batchqueue) incrementTail(cursorTailCur uint8) int {
 		cursorTail := uint8(oldCursor) + 1
 
 		if cursorTailCur != cursorTail-1 {
-			fmt.Println("TAIL: ", cursorTailCur, cursorTail)
+			//fmt.Println("TAIL: ", cursorTailCur, cursorTail)
 			return codeDoneBefore
 		}
 
 		delta := int(cursorHead) - int(cursorTail)
-		fmt.Println("Delta: ", delta)
+		//fmt.Println("Delta: ", delta)
 		if -2 < delta && 10 > delta {
 
 			// if cursorTail < cursorHead && cursorTail+10 >= cursorHead{
@@ -89,6 +89,23 @@ func (q *Batchqueue) incrementHead(cursorHeadCur uint8) int {
 	}
 }
 
+func (q *Batchqueue) incrementHead2(cursorHeadCur uint8) int {
+	for {
+		var newCursor uint64
+		oldCursor := atomic.LoadUint64(&q.cursor)
+		cursorHead := uint8(oldCursor >> 32)
+		cursorTail := uint8(oldCursor)
+		//delta := int(cursorTail+1) - int(cursorHead)
+		if cursorHead+1 == cursorTail {
+			newCursor = uint64(cursorHead+1)<<32 + uint64(cursorTail+1)
+		}
+		newCursor = uint64(cursorHead+1)<<32 + uint64(cursorTail)
+		if atomic.CompareAndSwapUint64(&q.cursor, oldCursor, newCursor) {
+			return codeDoneNow
+		}
+	}
+}
+
 func (q *Batchqueue) Push(item interface{}) bool {
 	for u := 0; u < 5; u++ {
 		//curCounterTail := atomic.LoadUint64(&q.counterTail)
@@ -103,31 +120,21 @@ func (q *Batchqueue) Push(item interface{}) bool {
 			//if !q.incrementTail() {
 			//	return false
 			//}
-			fmt.Println("No-add-item ", item)
+			//fmt.Println("No-add-item ", item)
 			switch q.incrementTail(cursorTail) {
 			case codeDoneBefore:
-				fmt.Println("A codeDoneBefore")
+				//fmt.Println("A codeDoneBefore")
 				continue
 			case codeDoneNow:
-				fmt.Println("A codeDoneNow")
+				//fmt.Println("A codeDoneNow")
 				//q.batches[cursorHead-1] = newBatch(q.sizeBatch) // +countBatches/2
 				continue //q.batches[cursorHead]
 			case codeNotDone:
-				fmt.Println("A codeNotDone")
+				//fmt.Println("A codeNotDone")
 				return false //nil
 			}
 		}
 		//	runtime.Gosched()
-		/*
-			curCounterHead := atomic.LoadUint64(&q.counterHead)
-			if curCounterTail >= curCounterTail+countBatches-5 {
-				runtime.Gosched()
-				continue
-			}
-			if atomic.CompareAndSwapUint64(&q.counterTail, curCounterTail, curCounterTail+1) {
-				//q.batches[uint8(curCounter+countBatches/2)] = newBatch(q.sizeBatch)
-			}
-		*/
 	}
 	return false
 }

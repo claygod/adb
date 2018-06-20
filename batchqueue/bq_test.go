@@ -6,6 +6,7 @@ package batchqueue
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 )
 
@@ -61,5 +62,32 @@ func TestPopBatch(t *testing.T) {
 
 	if btch.data[0] != 10 {
 		t.Error("Error PopBatch .data[0] ", btch.data[0])
+	}
+}
+
+func BenchmarkPerfomance(b *testing.B) {
+	b.StopTimer()
+	q := New(4096)
+	for i := 0; i < 30000; i++ {
+		q.Push(i)
+	}
+
+	for u := 0; u < 16; u++ {
+		go func(qb *Batchqueue) {
+			for i := 0; ; i++ {
+				q.Push(i)
+			}
+		}(q)
+	}
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		x := q.PopBatch()
+		//fmt.Println(x.size)
+		if x.size == 0 {
+			fmt.Println("-----------", i, x.size)
+			runtime.Gosched()
+		}
+		//runtime.Gosched()
 	}
 }
