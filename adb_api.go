@@ -33,8 +33,8 @@ func NewReception(patch string) (*Reception, error) {
 	if err != nil {
 		return nil, err
 	}
-	ch := make(chan *batcher.Task, 8000)
-	q := newQueue(sizeBucket * 8)
+	ch := make(chan *batcher.Task, 256)
+	q := newQueue(sizeBucket * 16)
 	b := batcher.New(wal, q, ch)
 
 	r := &Reception{

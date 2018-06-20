@@ -66,7 +66,7 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 	})
 	i := 0
 	// runtime.GOMAXPROCS(1)
-	b.SetParallelism(2)
+	b.SetParallelism(1)
 
 	b.StartTimer()
 
