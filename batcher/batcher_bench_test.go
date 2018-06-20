@@ -4,12 +4,11 @@ package batcher
 // Bench
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
-import (
-	//"fmt"
-	// "sync/atomic"
-	"testing"
-)
+//"fmt"
+// "sync/atomic"
+//"testing"
 
+/*
 func BenchmarkWorkCycleSequence(b *testing.B) {
 	b.StopTimer()
 	ch := make(chan *Task, 100)
@@ -58,7 +57,7 @@ func BenchmarkWork64x64Sequence(b *testing.B) {
 		batch.work()
 	}
 }
-
+*/
 /*
 func BenchmarkWorkCycleParallel(b *testing.B) {
 	b.StopTimer()

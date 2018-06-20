@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-	// "time"
+	"time"
 
 	"github.com/claygod/adb/account"
 	"github.com/claygod/adb/batcher"
@@ -21,29 +21,34 @@ type Reception struct {
 	accounts *Accounts
 	//answers    *Answers
 	workerStop int64
-	queue      *Queue
+	//queue      *Queue
 	//queuesPool [256]*queue.Queue
 	batcher *batcher.Batcher
 	wal     *wal.Wal
 	ch      chan *batcher.Task
+	ch2     chan *batcher.Task
+	time    *time.Time
 }
 
 func NewReception(patch string) (*Reception, error) {
-	wal, err := wal.New(patch, walSeparator) //newWal()
+	wal, err := wal.New(patch, WalSimbolSeparator1) //newWal()
 	if err != nil {
 		return nil, err
 	}
 	ch := make(chan *batcher.Task, 256)
-	q := newQueue(sizeBucket * 16)
-	b := batcher.New(wal, q, ch)
+	ch2 := make(chan *batcher.Task, 256)
+	//q := newQueue(sizeBucket * 16)
+	b := batcher.New(wal, ch, ch2)
 
 	r := &Reception{
 		accounts: newAccounts(),
 		//answers:  newAnswers(),
-		queue:   q,
+		//queue:   q,
 		batcher: b,
 		wal:     wal,
 		ch:      ch,
+		ch2:     ch2,
+		time:    &time.Time{},
 	}
 	//b.SetBatchSize(sizeBucket).Start(batcher.Sync)
 	b.SetBatchSize(sizeBucket).StartChain(batcher.Sync)
@@ -69,8 +74,13 @@ func (r *Reception) DoTransaction(order *Order, num int64) *Answer {
 
 	//qClosure := r.getClosure(logBytes, order, num, ans)
 	tsk := r.getTask(order, ans)
-
+	//if (uint8(atomic.LoadInt64(&r.counter))<<7)>>7 == 1 {
+	//fmt.Println(" @001111@ ", num)
+	//	r.ch <- tsk
+	//} else {
+	//fmt.Println(" @002222@ ", num)
 	r.ch <- tsk
+	//}
 
 	//if !r.queue.AddTransaction(&qClosure) {
 	//	ans.code = 404
@@ -130,7 +140,7 @@ func newWal() *Wal {
 	return &Wal{}
 }
 
-func (w *Wal) Log(key int64, b []byte) error {
+func (w *Wal) Log(s string) error {
 	return nil
 }
 

@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"strconv"
+	// "time"
 
 	"github.com/claygod/adb/account"
 	"github.com/claygod/adb/batcher"
@@ -20,7 +22,12 @@ const (
 )
 const sizeBucket int64 = 256
 
-const walSeparator string = "|"
+const WalSimbolSeparator1 string = "|"
+const WalSimbolSeparator2 string = ";"
+const WalSimbolBlock string = "Block"
+const WalSimbolUnblock string = "Unblock"
+const WalSimbolCredit string = "Credit"
+const WalSimbolDebit string = "Debit"
 
 func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 	t := &batcher.Task{}
@@ -95,13 +102,15 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 		ans.code = -200
 		ans.balance = replyBalances
 		//fmt.Println(" замыкание запущено под номером: ", num)
+		r.wal.Log(r.orderForWal(order)) //
+
 		return
 	}
 	t.Main = &f2
 	return t
 }
 
-func (r *Reception) getClosure(logBytes []byte, order *Order, num int64, ans *Answer) func() (int64, []byte) {
+func (r *Reception) getClosure222(logBytes []byte, order *Order, num int64, ans *Answer) func() (int64, []byte) {
 	return func() (int64, []byte) {
 		replyBalances := make(map[string]map[string]account.Balance)
 		lenBlock := len(order.Block)
@@ -190,6 +199,45 @@ func (r *Reception) orderToLog(order *Order) ([]byte, error) {
 		return nil, err
 	}
 	return orderGob.Bytes(), nil
+}
+
+func (r *Reception) orderForWal(order *Order) string {
+	var buf bytes.Buffer
+
+	//buf.WriteString(r.time.String())
+	//buf.WriteString(WalSimbolSeparator1)
+	//buf.WriteString(order.Hash)
+
+	for _, part := range order.Block {
+		buf.WriteString(WalSimbolSeparator1)
+		buf.WriteString(WalSimbolBlock)
+		r.partToBuf(part, &buf)
+	}
+	for _, part := range order.Unblock {
+		buf.WriteString(WalSimbolSeparator1)
+		buf.WriteString(WalSimbolUnblock)
+		r.partToBuf(part, &buf)
+	}
+	for _, part := range order.Credit {
+		buf.WriteString(WalSimbolSeparator1)
+		buf.WriteString(WalSimbolCredit)
+		r.partToBuf(part, &buf)
+	}
+	for _, part := range order.Debit {
+		buf.WriteString(WalSimbolSeparator1)
+		buf.WriteString(WalSimbolDebit)
+		r.partToBuf(part, &buf)
+	}
+	return buf.String()
+}
+
+func (r *Reception) partToBuf(part *Part, buf *bytes.Buffer) {
+	buf.WriteString(WalSimbolSeparator2)
+	buf.WriteString(part.Id)
+	buf.WriteString(WalSimbolSeparator2)
+	buf.WriteString(part.Key)
+	buf.WriteString(WalSimbolSeparator2)
+	buf.WriteString(strconv.FormatUint(part.Amount, 10))
 }
 
 func (r *Reception) doBlock(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {

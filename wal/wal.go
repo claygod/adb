@@ -7,7 +7,7 @@ package wal
 import (
 	"bytes"
 	"os"
-	"strconv"
+	// "strconv"
 	"sync"
 	"time"
 )
@@ -36,41 +36,41 @@ func New(patch string, separator string) (*Wal, error) {
 	return w, nil
 }
 
-func (w *Wal) Log(key int64, b []byte) error {
+func (w *Wal) Log(s string) error {
+
+	var buf bytes.Buffer
+	if _, err := buf.WriteString(w.time.String()); err != nil {
+		return err
+	}
+	//if _, err := buf.WriteString(w.separator); err != nil {
+	//	return err
+	//}
+	if _, err := buf.WriteString(s); err != nil {
+		return err
+	}
+	if _, err := buf.WriteString("\n"); err != nil {
+		return err
+	}
 	w.m.Lock()
-	defer w.m.Unlock()
-	if _, err := w.buf.WriteString(w.time.String()); err != nil {
-		return err
-	}
-	if _, err := w.buf.WriteString(w.separator); err != nil {
-		return err
-	}
-	if _, err := w.buf.WriteString(strconv.FormatInt(key, 10)); err != nil {
-		return err
-	}
-	if _, err := w.buf.WriteString(w.separator); err != nil {
-		return err
-	}
-	if _, err := w.buf.Write(b); err != nil {
-		return err
-	}
-	if _, err := w.buf.WriteString("\n"); err != nil {
-		return err
-	}
+	w.file.WriteString(buf.String())
+	w.m.Unlock()
 	return nil
 }
 
 func (w *Wal) Save() error {
 	w.m.Lock()
 	defer w.m.Unlock()
-	if _, err := w.file.Write(w.buf.Bytes()); err != nil {
-		return err
-	}
-	if err := w.file.Sync(); err != nil {
-		return err
-	}
-	w.buf.Reset()
-	return nil
+	return w.file.Sync()
+	/*
+		if _, err := w.file.Write(w.buf.Bytes()); err != nil {
+			return err
+		}
+		if err := w.file.Sync(); err != nil {
+			return err
+		}
+		w.buf.Reset()
+		return nil
+	*/
 }
 
 func (w *Wal) Close() error {

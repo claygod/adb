@@ -6,9 +6,10 @@ package batcher
 
 import (
 	"sync/atomic"
-	"testing"
+	//"testing"
 )
 
+/*
 func TestCallWal(t *testing.T) {
 	w := newMockWal()
 	ch := make(chan *Task, 100)
@@ -21,7 +22,7 @@ func TestCallWal(t *testing.T) {
 		//t.Error("Error in call 'WAL' (expected 5) - ", w.counter)
 	}
 }
-
+*/
 type mockWal struct {
 	counter int64
 }
@@ -30,7 +31,7 @@ func newMockWal() *mockWal {
 	return &mockWal{}
 }
 
-func (w *mockWal) Log(key int64, log []byte) error {
+func (w *mockWal) Log(log []byte) error {
 	atomic.AddInt64(&w.counter, 1)
 	// fmt.Println("---", w.counter, " ", key, " ", log)
 	return nil

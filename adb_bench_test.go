@@ -47,13 +47,13 @@ func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTr
 
 func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
-	r, _ := NewReception(filePatch)
+	r, _ := NewReception("./wal.txt")
 	for i := 0; i < 256; i++ {
 		r.accounts.AddAccount(strconv.Itoa(i))
 		r.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
 
 	}
-	p := &Part{Id: "111", Key: "USD", Amount: 1}
+	p := &Part{Id: "112", Key: "USD", Amount: 1}
 	// minus := []*Part{p}
 	plus := []*Part{p}
 	order := &Order{
@@ -66,7 +66,7 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 	})
 	i := 0
 	// runtime.GOMAXPROCS(1)
-	b.SetParallelism(1)
+	b.SetParallelism(16)
 
 	b.StartTimer()
 

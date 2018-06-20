@@ -16,8 +16,8 @@ func TestNewWal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	w.Log(10001, []byte("223:35432:USD:+:5"))
-	w.Log(10002, []byte("224:35432:USD:-:2"))
+	w.Log("223:35432:USD:+:5")
+	w.Log("224:35432:USD:-:2")
 	w.Save()
 	os.Remove(filePatch)
 }

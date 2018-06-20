@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-	"time"
+	// "time"
 )
 
-const batchSize int64 = 4
+const batchSize int64 = 1024
 
 const (
 	stateRun int64 = iota
@@ -26,22 +26,25 @@ type Batcher struct {
 	batchSize int64
 	barrier   int64
 	wal       Wal
-	queue     Queue
-	wg        sync.WaitGroup
-	ch        chan *Task
+	//queue     Queue
+	wg  sync.WaitGroup
+	ch  chan *Task
+	ch2 chan *Task
 }
 
-func New(wal Wal, queue Queue, ch chan *Task) *Batcher {
+func New(wal Wal, ch chan *Task, ch2 chan *Task) *Batcher {
 	return &Batcher{
 		batchSize: batchSize,
 		barrier:   stateStop,
 		wal:       wal,
-		queue:     queue,
-		wg:        sync.WaitGroup{},
-		ch:        ch,
+		//queue:     queue,
+		wg:  sync.WaitGroup{},
+		ch:  ch,
+		ch2: ch2,
 	}
 }
 
+/*
 func (b *Batcher) Start(mode bool) *Batcher {
 	if atomic.CompareAndSwapInt64(&b.barrier, stateStop, stateRun) {
 		if mode == Sync {
@@ -49,32 +52,33 @@ func (b *Batcher) Start(mode bool) *Batcher {
 			go b.workerSync()
 		} else {
 			//fmt.Println(" @053-Async@ ")
-			go b.workerAsync()
+			//go b.workerAsync()
 		}
 	}
 	return b
 }
-
+*/
 func (b *Batcher) StartChain(mode bool) *Batcher {
 	if atomic.CompareAndSwapInt64(&b.barrier, stateStop, stateRun) {
 		if mode == Sync {
 			//fmt.Println(" @053-Sync@ ")
-			go b.workerSyncChan(b.ch)
+			go b.workerSyncChan(b.ch, b.ch2)
 		} else {
 			//fmt.Println(" @053-Async@ ")
-			go b.workerAsync()
+			//go b.workerAsync()
 		}
 	}
 	return b
 }
 
+/*
 func (b *Batcher) startCut() *Batcher {
 	if atomic.CompareAndSwapInt64(&b.barrier, stateStop, stateRun) {
 		go b.workerCut()
 	}
 	return b
 }
-
+*/
 func (b *Batcher) Stop() *Batcher {
 	atomic.StoreInt64(&b.barrier, stateStop)
 	return b
@@ -85,6 +89,7 @@ func (b *Batcher) SetBatchSize(size int64) *Batcher {
 	return b
 }
 
+/*
 func (b *Batcher) workerSync() {
 	for {
 		batch := b.queue.GetBatch(b.batchSize)
@@ -103,8 +108,8 @@ func (b *Batcher) workerSync() {
 		}
 	}
 }
-
-func (b *Batcher) workerSyncChan(ch chan *Task) {
+*/
+func (b *Batcher) workerSyncChan(ch chan *Task, ch2 chan *Task) {
 	for {
 		// var i int64 = 0
 		tasks := make([]*Task, 0, b.batchSize)
@@ -121,6 +126,12 @@ func (b *Batcher) workerSyncChan(ch chan *Task) {
 				tasks = append(tasks, t)
 				f := *t.Main
 				f()
+				/*
+					case t := <-ch2:
+						tasks = append(tasks, t)
+						f := *t.Main
+						f()
+				*/
 			default:
 				// runtime.Gosched()
 				i = b.batchSize
@@ -140,6 +151,8 @@ func (b *Batcher) workerSyncChan(ch chan *Task) {
 			continue
 		}
 
+		b.wal.Save()
+		// fmt.Println(" @len batch@ ", len(tasks), b.batchSize)
 		for _, t := range tasks {
 			f := *t.Finish
 			f()
@@ -154,6 +167,7 @@ func (b *Batcher) workerSyncChan(ch chan *Task) {
 	}
 }
 
+/*
 func (b *Batcher) workerAsync() {
 	var wg sync.WaitGroup
 	for {
@@ -177,7 +191,8 @@ func (b *Batcher) workerAsync() {
 		}
 	}
 }
-
+*/
+/*
 func (b *Batcher) workerCut() {
 	for {
 		b.work()
@@ -186,6 +201,7 @@ func (b *Batcher) workerCut() {
 		}
 	}
 }
+
 
 func (b *Batcher) work() {
 	var wg sync.WaitGroup = b.wg
@@ -200,7 +216,7 @@ func (b *Batcher) work() {
 	}
 	wg.Wait()
 }
-
+*/
 /*
 inputProcessAsync
 
@@ -208,13 +224,14 @@ Return:
 	- key (int64) - number executed tasks
 	- answer ([]byte) - gob-serialize
 */
+/*
 func (b *Batcher) inputProcessAsync(in *func() (int64, []byte), wg *sync.WaitGroup) {
 	//fmt.Println(" @053@ ")
 	b.wal.Log((*in)())
 	//fmt.Println(" @053@ ___")
 	wg.Done()
 }
-
+*/
 func (b *Batcher) inputProcessSync(in *func() (int64, []byte)) {
 	(*in)()
 	//fmt.Println(" @053--1@ ")
@@ -232,7 +249,7 @@ type Queue interface {
 }
 
 type Wal interface {
-	Log(int64, []byte) error // key, log
+	Log(string) error // key, log
 	Save() error
 	Close() error
 }
