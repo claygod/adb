@@ -31,7 +31,8 @@ type Reception struct {
 }
 
 func NewReception(patch string) (*Reception, error) {
-	wal, err := wal.New(patch, WalSimbolSeparator1) //newWal()
+	fileName := "start.txt"
+	wal, err := wal.New(patch, fileName, WalSimbolSeparator1) //newWal()
 	if err != nil {
 		return nil, err
 	}

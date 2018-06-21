@@ -7,7 +7,6 @@ package wal
 import (
 	"bytes"
 	"os"
-	// "strconv"
 	"sync"
 	"time"
 )
@@ -18,20 +17,20 @@ type Wal struct {
 	buf       bytes.Buffer
 	time      time.Time
 	separator string
-	// patch string
+	patch     string
 }
 
-func New(patch string, separator string) (*Wal, error) {
-	file, err := os.Create(patch)
-	if err != nil {
-		return nil, err
-	}
+func New(patch string, fileName string, separator string) (*Wal, error) {
+	//file, err := os.Create(patch + fileName)
+	//if err != nil {
+	//	return nil, err
+	//}
 	w := &Wal{
 		m:         sync.Mutex{},
-		file:      file,
+		//file:      file,
 		time:      time.Now(),
 		separator: separator,
-		// patch: patch,
+		patch:     patch,
 	}
 	return w, nil
 }
@@ -58,6 +57,18 @@ func (w *Wal) Save() error {
 	w.m.Lock()
 	defer w.m.Unlock()
 	return w.file.Sync()
+}
+
+func (w *Wal) Filename(fileName string) error {
+	w.m.Lock()
+	w.file.Close()
+	file, err := os.Create(w.patch + fileName)
+	if err != nil {
+		return err
+	}
+	w.file = file
+	w.m.Unlock()
+	return nil
 }
 
 func (w *Wal) Close() error {

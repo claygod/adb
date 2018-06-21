@@ -36,7 +36,7 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 		return
 	}
 	t.Finish = &f1
-	f2 := func() {
+	f2 := func() string {
 		replyBalances := make(map[string]map[string]account.Balance)
 		lenBlock := len(order.Block)
 		lenUnblock := len(order.Unblock)
@@ -49,7 +49,7 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 				r.rollbackBlock(count, order)
 				//r.answers.Store(num, &Answer{code: 404})
 				ans.code = -404
-				return // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+				return "" // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
 			}
 		}
 		// Unblock
@@ -61,7 +61,7 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 				}
 				r.rollbackUnblock(count, order)
 				ans.code = -404
-				return // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+				return "" // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
 			}
 		}
 		// Credit
@@ -76,7 +76,7 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 				}
 				r.rollbackCredit(count, order)
 				ans.code = -404
-				return // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+				return "" // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
 			}
 		}
 		// Debit
@@ -94,7 +94,7 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 				}
 				r.rollbackDebit(count, order)
 				ans.code = -404
-				return // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
+				return "" // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
 			}
 		}
 
@@ -102,9 +102,9 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 		ans.code = -200
 		ans.balance = replyBalances
 		//fmt.Println(" замыкание запущено под номером: ", num)
-		r.wal.Log(r.orderForWal(order)) //
+		// r.wal.Log(r.orderForWal(order)) //
 
-		return
+		return r.orderForWal(order)
 	}
 	t.Main = &f2
 	return t

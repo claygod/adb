@@ -15,7 +15,7 @@ import (
 	// "github.com/claygod/adb/transaction"
 )
 
-const filePatch = "./test.txt"
+const filePatch = "./log/"
 
 func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
@@ -47,7 +47,7 @@ func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTr
 
 func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
-	r, _ := NewReception("./wal.txt")
+	r, _ := NewReception("./log/")
 	for i := 0; i < 256; i++ {
 		r.accounts.AddAccount(strconv.Itoa(i))
 		r.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
@@ -66,8 +66,7 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 	})
 	i := 0
 	// runtime.GOMAXPROCS(1)
-	b.SetParallelism(32)
-
+	b.SetParallelism(16)
 	b.StartTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
