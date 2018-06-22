@@ -181,6 +181,8 @@ func (s *SubAccount) Debit(amount uint64) (Balance, error) {
 2) на хэш может приходить и блокироваться несколько сумм, и из них потом списывается
 
 можно сделать два режима (в перспективе)
+
+И ещё момент - как быть с блокированием при сохранении..?
 */
 
 func (s *SubAccount) Block(key string, amount uint64) (Balance, error) {
