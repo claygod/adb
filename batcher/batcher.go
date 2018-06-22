@@ -29,7 +29,6 @@ type Batcher struct {
 	batchSize int64
 	barrier   int64
 	wal       Wal
-	//queue     Queue
 	wg   sync.WaitGroup
 	ch   chan *Task
 	ch2  chan *Task
@@ -42,7 +41,6 @@ func New(wal Wal, ch chan *Task, ch2 chan *Task) *Batcher {
 		batchSize: batchSize,
 		barrier:   stateStopped,
 		wal:       wal,
-		//queue:     queue,
 		wg:   sync.WaitGroup{},
 		ch:   ch,
 		ch2:  ch2,
@@ -52,10 +50,10 @@ func New(wal Wal, ch chan *Task, ch2 chan *Task) *Batcher {
 	return b
 }
 
-func (b *Batcher) StartChain(mode bool) *Batcher {
+func (b *Batcher) Start() *Batcher {
 	for {
 		if atomic.CompareAndSwapInt64(&b.barrier, stateStopped, stateRun) {
-			go b.workerSyncChan(b.ch, b.ch2)
+			go b.worker(b.ch, b.ch2)
 			return b
 		}
 	}
@@ -75,10 +73,8 @@ func (b *Batcher) SetBatchSize(size int64) *Batcher {
 	return b
 }
 
-func (b *Batcher) workerSyncChan(ch chan *Task, ch2 chan *Task) {
+func (b *Batcher) worker(ch chan *Task, ch2 chan *Task) {
 	tasks := make([]*Task, b.batchSize, b.batchSize)
-	//fileName := strconv.FormatUint((uint64(time.Now().Unix())>>8)<<8, 10)
-	// walTime := b.GetTime() //(uint64(b.time.Unix()) >> 8) << 8
 	for {
 		counter := 0
 		for i := int64(0); i < b.batchSize; i++ {
@@ -90,6 +86,9 @@ func (b *Batcher) workerSyncChan(ch chan *Task, ch2 chan *Task) {
 				b.wal.Log(f())
 				counter++
 			default:
+				if atomic.CompareAndSwapInt64(&b.barrier, stateStops, stateStopped) {
+					return
+				}
 				i = b.batchSize
 			}
 		}
@@ -98,25 +97,11 @@ func (b *Batcher) workerSyncChan(ch chan *Task, ch2 chan *Task) {
 			runtime.Gosched()
 			continue
 		}
-
 		b.wal.Save()
-		// fmt.Println(" @len batch@ ", len(tasks), b.batchSize)
-		for i := 0; i < counter; i++ { //}_, t := range tasks {
+		for i := 0; i < counter; i++ {
 			f := *tasks[i].Finish
 			f()
 		}
-
-		if atomic.CompareAndSwapInt64(&b.barrier, stateStops, stateStopped) {
-			return
-		}
-		//if b.barrier == stateStops { // b.wal.Save() != nil ||
-		//	return
-		//}
-		// fileName := strconv.FormatUint((uint64(time.Now().Unix())>>8)<<8, 10)
-
-		//if wt := b.GetTime(); wt != walTime {
-		//	b.wal.ChangeFilename(b.TimeToString(b.GetTime()))//b.wal.ChangeFilename(strconv.FormatUint(wt, 10) + logExt)
-		//}
 	}
 }
 
@@ -127,11 +112,11 @@ func (b *Batcher) GetTime() uint64 {
 func (b *Batcher) TimeToString(wt uint64) string {
 	return strconv.FormatUint(wt, 10) + logExt
 }
-
+/*
 type Queue interface {
 	GetBatch(int64) []*func() (int64, []byte) //Input
 }
-
+*/
 type Wal interface {
 	Log(string) error // key, log
 	Save() error

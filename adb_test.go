@@ -18,6 +18,7 @@ func TestTime1000000Trans(t *testing.T) {
 	// t.Error("Now the start is possible!")
 	//}
 	r, _ := New(filePatch)
+	r.Start()
 	r.accounts.AddAccount("111")
 	r.accounts.AddAccount("112")
 	r.accounts.Account("111").Balance("USD").Debit(9)
@@ -26,7 +27,7 @@ func TestTime1000000Trans(t *testing.T) {
 	p2 := &Part{Id: "112", Key: "USD", Amount: 5}
 	minus := []*Part{p1}
 	plus := []*Part{p2}
-	r.ExeTransaction(&Order{
+	r.Transaction(&Order{
 		Credit: minus,
 		Debit:  plus,
 	})

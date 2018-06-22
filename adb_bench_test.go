@@ -19,9 +19,10 @@ const filePatch = "./log/"
 
 func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
-	r, _ := New(filePatch)
+	db, _ := New(filePatch)
+	db.Start()
 	for i := 0; i < 256; i++ {
-		r.accounts.AddAccount(strconv.Itoa(i))
+		db.accounts.AddAccount(strconv.Itoa(i))
 		// r.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
 
 	}
@@ -32,7 +33,7 @@ func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTr
 		// Credit: minus,
 		Debit: plus,
 	}
-	r.ExeTransaction(&Order{
+	db.Transaction(&Order{
 		// Credit: minus,
 		Debit: plus,
 	})
@@ -41,16 +42,17 @@ func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTr
 
 	for i := 0; i < b.N; i++ {
 		order.Debit[0].Id = strconv.Itoa(int(byte(i)))
-		r.ExeTransaction(order)
+		db.Transaction(order)
 	}
 }
 
 func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
-	r, _ := New("./log/")
+	db, _ := New("./log/")
+	db.Start()
 	for i := 0; i < 256; i++ {
-		r.accounts.AddAccount(strconv.Itoa(i))
-		r.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
+		db.accounts.AddAccount(strconv.Itoa(i))
+		db.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
 
 	}
 	p := &Part{Id: "112", Key: "USD", Amount: 1}
@@ -60,7 +62,7 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 		// Credit: minus,
 		Debit: plus,
 	}
-	r.ExeTransaction(&Order{
+	db.Transaction(&Order{
 		// Credit: minus,
 		Debit: plus,
 	})
@@ -72,7 +74,7 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			order.Debit[0].Id = strconv.Itoa(int(byte(i)))
-			r.ExeTransaction(order)
+			db.Transaction(order)
 			i++
 		}
 	})
@@ -394,7 +396,7 @@ func ForTestGenStringArray(num int) string {
 }
 
 func ForTestExeTransaction(r *Adb, t *Order, wg *sync.WaitGroup) {
-	r.ExeTransaction(t)
+	r.Transaction(t)
 	wg.Done()
 }
 

@@ -20,7 +20,7 @@ type Adb struct {
 	counter  int64
 	accounts *Accounts
 	//answers    *Answers
-	workerStop int64
+	state int64
 	//queue      *Queue
 	//queuesPool [256]*queue.Queue
 	batcher *batcher.Batcher
@@ -51,30 +51,28 @@ func New(patch string) (*Adb, error) {
 		ch2:     ch2,
 		time:    &time.Time{},
 	}
-	//b.SetBatchSize(sizeBucket).Start(batcher.Sync)
-	b.SetBatchSize(sizeBucket).StartChain(batcher.Sync)
-	//b.SetBatchSize(sizeBucket * 8).StartChain(batcher.Sync)
 
-	//for i := 0; i < 256; i++ {
-	//	r.queuesPool[i] = queue.New(sizeBucket)
-	//}
+	b.SetBatchSize(sizeBucket) //.Start()
+
 	return r, nil
 }
 
-func (a *Adb) ExeTransaction(order *Order) *Answer {
-	num := atomic.AddInt64(&a.counter, 1)
-	ans := a.doTransaction(order, num)
-	// runtime.Gosched()
-	//time.Sleep(1 * time.Microsecond)
-	return a.getAnswer(num, ans)
+func (a *Adb) Start() {
+	a.batcher.Start()
+	atomic.StoreInt64(&a.state, stateOpen)
 }
 
-func (a *Adb) ExeTransaction(order *Order) *Answer {
+func (a *Adb) Stop() {
+	atomic.StoreInt64(&a.state, stateClosed)
+	a.batcher.Stop()
+}
+
+func (a *Adb) Transaction(order *Order) (*Answer, error) {
 	num := atomic.AddInt64(&a.counter, 1)
 	ans := a.doTransaction(order, num)
 	// runtime.Gosched()
 	//time.Sleep(1 * time.Microsecond)
-	return a.getAnswer(num, ans)
+	return a.getAnswer(num, ans), nil
 }
 
 func (a *Adb) doTransaction(order *Order, num int64) *Answer {
