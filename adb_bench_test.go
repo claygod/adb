@@ -418,6 +418,7 @@ func ForTestGenTransactionsArray(cnt int) []*Order {
 	return tArray
 }
 
+/*
 func ForTestGenQueryArray(cnt int) []*Query {
 	qArray := make([]*Query, 0, cnt)
 	for i := 0; i < cnt; i++ {
@@ -435,3 +436,4 @@ func ForTestGenQueryArray(cnt int) []*Query {
 	}
 	return qArray
 }
+*/

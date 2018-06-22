@@ -63,20 +63,28 @@ func New(patch string) (*Adb, error) {
 
 func (a *Adb) ExeTransaction(order *Order) *Answer {
 	num := atomic.AddInt64(&a.counter, 1)
-	ans := a.DoTransaction(order, num)
+	ans := a.doTransaction(order, num)
 	// runtime.Gosched()
 	//time.Sleep(1 * time.Microsecond)
-	return a.GetAnswer(num, ans)
+	return a.getAnswer(num, ans)
 }
 
-func (a *Adb) DoTransaction(order *Order, num int64) *Answer {
+func (a *Adb) ExeTransaction(order *Order) *Answer {
+	num := atomic.AddInt64(&a.counter, 1)
+	ans := a.doTransaction(order, num)
+	// runtime.Gosched()
+	//time.Sleep(1 * time.Microsecond)
+	return a.getAnswer(num, ans)
+}
+
+func (a *Adb) doTransaction(order *Order, num int64) *Answer {
 	ans := &Answer{code: 0}
 	tsk := a.getTask(order, ans)
 	a.ch <- tsk
 	return ans
 }
 
-func (a *Adb) GetAnswer(num int64, ans *Answer) *Answer { // , a **Answer
+func (a *Adb) getAnswer(num int64, ans *Answer) *Answer { // , a **Answer
 	runtime.Gosched()
 	for i := 0; ; i++ { //  i := 0; i < 1500000; i++
 		if atomic.LoadInt64(&ans.code) > 0 {
@@ -89,15 +97,17 @@ func (a *Adb) GetAnswer(num int64, ans *Answer) *Answer { // , a **Answer
 	return nil
 }
 
-type Answer struct {
-	code    int64
-	balance map[string]map[string]account.Balance
-}
-
+/*
 type Query struct {
 	num   int64
 	order *Order
 	log   []byte
+}
+*/
+
+type Answer struct {
+	code    int64
+	balance map[string]map[string]account.Balance
 }
 
 type Order struct {
