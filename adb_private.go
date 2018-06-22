@@ -29,7 +29,7 @@ const WalSimbolUnblock string = "Unblock"
 const WalSimbolCredit string = "Credit"
 const WalSimbolDebit string = "Debit"
 
-func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
+func (a *Adb) getTask(order *Order, ans *Answer) *batcher.Task {
 	t := &batcher.Task{}
 	f1 := func() {
 		ans.code *= -1
@@ -45,8 +45,8 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 		// Block
 		//fmt.Println(" @e01@ начата Block")
 		if lenBlock > 0 {
-			if count, err := r.doBlock(order, replyBalances); err != nil {
-				r.rollbackBlock(count, order)
+			if count, err := a.doBlock(order, replyBalances); err != nil {
+				a.rollbackBlock(count, order)
 				//r.answers.Store(num, &Answer{code: 404})
 				ans.code = -404
 				return "" // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
@@ -55,11 +55,11 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 		// Unblock
 		//fmt.Println(" @e01@ начата Unblock")
 		if lenUnblock > 0 {
-			if count, err := r.doUnblock(order, replyBalances); err != nil {
+			if count, err := a.doUnblock(order, replyBalances); err != nil {
 				if lenBlock > 0 {
-					r.rollbackBlock(len(order.Block), order)
+					a.rollbackBlock(len(order.Block), order)
 				}
-				r.rollbackUnblock(count, order)
+				a.rollbackUnblock(count, order)
 				ans.code = -404
 				return "" // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
 			}
@@ -67,14 +67,14 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 		// Credit
 		//fmt.Println(" @e01@ начата Credit")
 		if lenCredit > 0 {
-			if count, err := r.doCredit(order, replyBalances); err != nil {
+			if count, err := a.doCredit(order, replyBalances); err != nil {
 				if lenBlock > 0 {
-					r.rollbackBlock(len(order.Block), order)
+					a.rollbackBlock(len(order.Block), order)
 				}
 				if lenUnblock > 0 {
-					r.rollbackUnblock(len(order.Block), order)
+					a.rollbackUnblock(len(order.Block), order)
 				}
-				r.rollbackCredit(count, order)
+				a.rollbackCredit(count, order)
 				ans.code = -404
 				return "" // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
 			}
@@ -82,17 +82,17 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 		// Debit
 		//fmt.Println(" @e01@ начата Debit")
 		if lenDebit > 0 {
-			if count, err := r.doDebit(order, replyBalances); err != nil {
+			if count, err := a.doDebit(order, replyBalances); err != nil {
 				if lenBlock > 0 {
-					r.rollbackBlock(len(order.Block), order)
+					a.rollbackBlock(len(order.Block), order)
 				}
 				if lenUnblock > 0 {
-					r.rollbackUnblock(len(order.Block), order)
+					a.rollbackUnblock(len(order.Block), order)
 				}
 				if lenCredit > 0 {
-					r.rollbackCredit(len(order.Block), order)
+					a.rollbackCredit(len(order.Block), order)
 				}
-				r.rollbackDebit(count, order)
+				a.rollbackDebit(count, order)
 				ans.code = -404
 				return "" // тут логовое сообщение для ошибочной транзакции - оно должно быть пустым!
 			}
@@ -104,20 +104,20 @@ func (r *Reception) getTask(order *Order, ans *Answer) *batcher.Task {
 		//fmt.Println(" замыкание запущено под номером: ", num)
 		// r.wal.Log(r.orderForWal(order)) //
 
-		return r.orderForWal(order)
+		return a.orderForWal(order)
 	}
 	t.Main = &f2
 	return t
 }
 
-func (r *Reception) balancesAddBalance(id string, key string, balances map[string]map[string]account.Balance, balance account.Balance) {
+func (a *Adb) balancesAddBalance(id string, key string, balances map[string]map[string]account.Balance, balance account.Balance) {
 	if _, ok := balances[id]; !ok {
 		balances[id] = make(map[string]account.Balance)
 	}
 	balances[id][key] = balance
 }
 
-func (r *Reception) orderToLog(order *Order) ([]byte, error) {
+func (a *Adb) orderToLog(order *Order) ([]byte, error) {
 	var orderGob bytes.Buffer
 	enc := gob.NewEncoder(&orderGob)
 	err := enc.Encode(order)
@@ -127,33 +127,33 @@ func (r *Reception) orderToLog(order *Order) ([]byte, error) {
 	return orderGob.Bytes(), nil
 }
 
-func (r *Reception) orderForWal(order *Order) string {
+func (a *Adb) orderForWal(order *Order) string {
 	var buf bytes.Buffer
 
 	for _, part := range order.Block {
 		buf.WriteString(WalSimbolSeparator1)
 		buf.WriteString(WalSimbolBlock)
-		r.partToBuf(part, &buf)
+		a.partToBuf(part, &buf)
 	}
 	for _, part := range order.Unblock {
 		buf.WriteString(WalSimbolSeparator1)
 		buf.WriteString(WalSimbolUnblock)
-		r.partToBuf(part, &buf)
+		a.partToBuf(part, &buf)
 	}
 	for _, part := range order.Credit {
 		buf.WriteString(WalSimbolSeparator1)
 		buf.WriteString(WalSimbolCredit)
-		r.partToBuf(part, &buf)
+		a.partToBuf(part, &buf)
 	}
 	for _, part := range order.Debit {
 		buf.WriteString(WalSimbolSeparator1)
 		buf.WriteString(WalSimbolDebit)
-		r.partToBuf(part, &buf)
+		a.partToBuf(part, &buf)
 	}
 	return buf.String()
 }
 
-func (r *Reception) partToBuf(part *Part, buf *bytes.Buffer) {
+func (a *Adb) partToBuf(part *Part, buf *bytes.Buffer) {
 	buf.WriteString(WalSimbolSeparator2)
 	buf.WriteString(part.Id)
 	buf.WriteString(WalSimbolSeparator2)
@@ -162,9 +162,9 @@ func (r *Reception) partToBuf(part *Part, buf *bytes.Buffer) {
 	buf.WriteString(strconv.FormatUint(part.Amount, 10))
 }
 
-func (r *Reception) doBlock(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+func (a *Adb) doBlock(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
 	for i, part := range order.Block {
-		acc := r.accounts.Account(part.Id)
+		acc := a.accounts.Account(part.Id)
 		if acc == nil {
 			return i - 1, fmt.Errorf("Account %s not found", part.Id)
 		}
@@ -172,14 +172,14 @@ func (r *Reception) doBlock(order *Order, replyBalances map[string]map[string]ac
 		if err != nil {
 			return i, err
 		}
-		r.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
+		a.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
 	}
 	return 0, nil
 }
 
-func (r *Reception) doUnblock(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+func (a *Adb) doUnblock(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
 	for i, part := range order.Unblock {
-		acc := r.accounts.Account(part.Id)
+		acc := a.accounts.Account(part.Id)
 		if acc == nil {
 			return i - 1, fmt.Errorf("Account %s not found", part.Id)
 		}
@@ -187,14 +187,14 @@ func (r *Reception) doUnblock(order *Order, replyBalances map[string]map[string]
 		if err != nil {
 			return i, err
 		}
-		r.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
+		a.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
 	}
 	return 0, nil
 }
 
-func (r *Reception) doCredit(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+func (a *Adb) doCredit(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
 	for i, part := range order.Credit {
-		acc := r.accounts.Account(part.Id)
+		acc := a.accounts.Account(part.Id)
 		if acc == nil {
 			return i - 1, fmt.Errorf("Account %s not found", part.Id)
 		}
@@ -202,14 +202,14 @@ func (r *Reception) doCredit(order *Order, replyBalances map[string]map[string]a
 		if err != nil {
 			return i, err
 		}
-		r.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
+		a.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
 	}
 	return 0, nil
 }
 
-func (r *Reception) doDebit(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
+func (a *Adb) doDebit(order *Order, replyBalances map[string]map[string]account.Balance) (int, error) {
 	for i, part := range order.Debit {
-		acc := r.accounts.Account(part.Id)
+		acc := a.accounts.Account(part.Id)
 		if acc == nil {
 			return i - 1, fmt.Errorf("Account %s not found", part.Id)
 		}
@@ -217,40 +217,40 @@ func (r *Reception) doDebit(order *Order, replyBalances map[string]map[string]ac
 		if err != nil {
 			return i, err
 		}
-		r.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
+		a.balancesAddBalance(part.Id, part.Key, replyBalances, balance)
 	}
 	return 0, nil
 }
 
-func (r *Reception) rollbackBlock(num int, order *Order) {
+func (a *Adb) rollbackBlock(num int, order *Order) {
 	for i := 0; i < num; i++ {
-		r.accounts.Account(order.Block[i].Id).
+		a.accounts.Account(order.Block[i].Id).
 			Balance(order.Block[i].Key).
 			Unblock(order.Hash, order.Block[i].Amount)
 	}
 }
 
-func (r *Reception) rollbackUnblock(num int, order *Order) {
+func (a *Adb) rollbackUnblock(num int, order *Order) {
 	for i := 0; i < num; i++ {
-		r.accounts.Account(order.Block[i].Id).
+		a.accounts.Account(order.Block[i].Id).
 			Balance(order.Block[i].Key).
 			Block(order.Hash, order.Block[i].Amount)
 	}
 }
 
-func (r *Reception) rollbackCredit(num int, order *Order) {
+func (a *Adb) rollbackCredit(num int, order *Order) {
 	for i := 0; i < num; i++ {
-		r.accounts.Account(order.Block[i].Id).
+		a.accounts.Account(order.Block[i].Id).
 			Balance(order.Block[i].Key).
 			Debit(order.Block[i].Amount)
-		r.accounts.Account(order.Block[i].Id).
+		a.accounts.Account(order.Block[i].Id).
 			Balance(order.Block[i].Key).
 			Block(order.Hash, order.Block[i].Amount)
 	}
 }
-func (r *Reception) rollbackDebit(num int, order *Order) {
+func (a *Adb) rollbackDebit(num int, order *Order) {
 	for i := 0; i < num; i++ {
-		r.accounts.Account(order.Block[i].Id).
+		a.accounts.Account(order.Block[i].Id).
 			Balance(order.Block[i].Key).
 			WriteOff(order.Block[i].Amount)
 	}

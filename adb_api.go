@@ -16,7 +16,7 @@ import (
 	"github.com/claygod/adb/wal"
 )
 
-type Reception struct {
+type Adb struct {
 	counter  int64
 	accounts *Accounts
 	//answers    *Answers
@@ -30,7 +30,7 @@ type Reception struct {
 	time    *time.Time
 }
 
-func NewReception(patch string) (*Reception, error) {
+func New(patch string) (*Adb, error) {
 	fileName := "start.txt"
 	wal, err := wal.New(patch, fileName, WalSimbolSeparator1) //newWal()
 	if err != nil {
@@ -41,7 +41,7 @@ func NewReception(patch string) (*Reception, error) {
 	//q := newQueue(sizeBucket * 16)
 	b := batcher.New(wal, ch, ch2)
 
-	r := &Reception{
+	r := &Adb{
 		accounts: newAccounts(),
 		//answers:  newAnswers(),
 		//queue:   q,
@@ -61,50 +61,31 @@ func NewReception(patch string) (*Reception, error) {
 	return r, nil
 }
 
-func (r *Reception) ExeTransaction(order *Order) *Answer {
-	num := atomic.AddInt64(&r.counter, 1)
-	ans := r.DoTransaction(order, num)
+func (a *Adb) ExeTransaction(order *Order) *Answer {
+	num := atomic.AddInt64(&a.counter, 1)
+	ans := a.DoTransaction(order, num)
 	// runtime.Gosched()
 	//time.Sleep(1 * time.Microsecond)
-	return r.GetAnswer(num, ans)
+	return a.GetAnswer(num, ans)
 }
 
-func (r *Reception) DoTransaction(order *Order, num int64) *Answer {
-	//fmt.Println(" @001@ ", num)
+func (a *Adb) DoTransaction(order *Order, num int64) *Answer {
 	ans := &Answer{code: 0}
-
-	//qClosure := r.getClosure(logBytes, order, num, ans)
-	tsk := r.getTask(order, ans)
-	//if (uint8(atomic.LoadInt64(&r.counter))<<7)>>7 == 1 {
-	//fmt.Println(" @001111@ ", num)
-	//	r.ch <- tsk
-	//} else {
-	//fmt.Println(" @002222@ ", num)
-	r.ch <- tsk
-	//}
-
-	//if !r.queue.AddTransaction(&qClosure) {
-	//	ans.code = 404
-	//}
-
+	tsk := a.getTask(order, ans)
+	a.ch <- tsk
 	return ans
 }
 
-func (r *Reception) GetAnswer(num int64, ans *Answer) *Answer { // , a **Answer
+func (a *Adb) GetAnswer(num int64, ans *Answer) *Answer { // , a **Answer
 	runtime.Gosched()
-	// return &Answer{code: 404}
-	//fmt.Println(" @031@ ", num)
 	for i := 0; ; i++ { //  i := 0; i < 1500000; i++
-		//fmt.Println(" @032@ ", num)
 		if atomic.LoadInt64(&ans.code) > 0 {
-			//go r.answers.Delete(num)
-			//fmt.Println(" @032@ ура, ответ получен! на шаге ", i, " код=", ans.code)
 			return ans //.(*Answer)
 		}
 		//time.Sleep(1000000 * time.Microsecond) //time.Duration(u) *
 		runtime.Gosched()
 	}
-	fmt.Printf("\r\n- не найден - %d \r\n", num)
+	fmt.Printf("\r\n- не найден - %d \r\n", num) // ToDo !!
 	return nil
 }
 

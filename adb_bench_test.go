@@ -19,7 +19,7 @@ const filePatch = "./log/"
 
 func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
-	r, _ := NewReception(filePatch)
+	r, _ := New(filePatch)
 	for i := 0; i < 256; i++ {
 		r.accounts.AddAccount(strconv.Itoa(i))
 		// r.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
@@ -47,7 +47,7 @@ func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTr
 
 func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
-	r, _ := NewReception("./log/")
+	r, _ := New("./log/")
 	for i := 0; i < 256; i++ {
 		r.accounts.AddAccount(strconv.Itoa(i))
 		r.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
@@ -393,7 +393,7 @@ func ForTestGenStringArray(num int) string {
 	return out
 }
 
-func ForTestExeTransaction(r *Reception, t *Order, wg *sync.WaitGroup) {
+func ForTestExeTransaction(r *Adb, t *Order, wg *sync.WaitGroup) {
 	r.ExeTransaction(t)
 	wg.Done()
 }
