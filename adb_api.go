@@ -6,8 +6,8 @@ package adb
 
 import (
 	"fmt"
+	"os"
 	"runtime"
-	//"sync"
 	"sync/atomic"
 	"time"
 
@@ -21,6 +21,7 @@ type Adb struct {
 	accounts *Accounts
 	//answers    *Answers
 	state int64
+	patch string
 	//queue      *Queue
 	//queuesPool [256]*queue.Queue
 	batcher *batcher.Batcher
@@ -45,6 +46,8 @@ func New(patch string) (*Adb, error) {
 		accounts: newAccounts(),
 		//answers:  newAnswers(),
 		//queue:   q,
+		state:   stateClosed,
+		patch:   patch,
 		batcher: b,
 		wal:     wal,
 		ch:      ch,
@@ -65,13 +68,31 @@ func (a *Adb) Start() {
 func (a *Adb) Stop() {
 	atomic.StoreInt64(&a.state, stateClosed)
 	a.batcher.Stop()
+	a.save()
+}
+
+func (a *Adb) save() error {
+	file, err := os.Create(a.patch + "adb.txt")
+	if err != nil {
+		return err
+	}
+	_, err = file.WriteString(a.accounts.Export())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *Adb) load() {
 }
 
 func (a *Adb) Transaction(order *Order) (*Answer, error) {
+	//fmt.Println(order)
 	num := atomic.AddInt64(&a.counter, 1)
 	ans := a.doTransaction(order, num)
 	// runtime.Gosched()
 	//time.Sleep(1 * time.Microsecond)
+	//fmt.Println(a.getAnswer(num, ans))
 	return a.getAnswer(num, ans), nil
 }
 

@@ -175,6 +175,14 @@ func (s *SubAccount) Debit(amount uint64) (Balance, error) {
 	return s.Balance, nil
 }
 
+/*
+Тут есть два варианта по блокированию:
+1) блокируется на конкретный хэш конкретная сумма, и блокированная сумма должна точно совпадать со списываемой потом
+2) на хэш может приходить и блокироваться несколько сумм, и из них потом списывается
+
+можно сделать два режима (в перспективе)
+*/
+
 func (s *SubAccount) Block(key string, amount uint64) (Balance, error) {
 	if _, ok := s.blocks[key]; ok {
 		return s.Balance, fmt.Errorf("This key is already taken.")

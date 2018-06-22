@@ -8,13 +8,13 @@ import (
 	//"fmt"
 
 	"bytes"
-	"sync"
+	// "sync"
 
 	"github.com/claygod/adb/account"
 )
 
 type Accounts struct {
-	sync.Mutex
+	//sync.Mutex
 	data map[string]*account.Account
 }
 
@@ -28,8 +28,8 @@ func newAccounts() *Accounts {
 }
 
 func (a *Accounts) Account(id string) *account.Account {
-	a.Lock()
-	defer a.Unlock()
+	//a.Lock()
+	//defer a.Unlock()
 	acc, ok := a.data[id]
 	if !ok {
 		return nil
@@ -38,8 +38,8 @@ func (a *Accounts) Account(id string) *account.Account {
 }
 
 func (a *Accounts) AddAccount(id string) bool {
-	a.Lock()
-	defer a.Unlock()
+	//a.Lock()
+	//defer a.Unlock()
 	if _, ok := a.data[id]; ok {
 		return false
 	}
@@ -47,13 +47,13 @@ func (a *Accounts) AddAccount(id string) bool {
 	return true
 }
 func (a *Accounts) Export() string {
-	a.Lock()
-	defer a.Unlock()
+	//a.Lock()
+	//defer a.Unlock()
 	var buf bytes.Buffer
 
 	for id, acc := range a.data {
 		buf.WriteString(id)
-		buf.WriteString(WalSimbolSeparator1)
+		// buf.WriteString(WalSimbolSeparator1)
 		buf.WriteString(acc.Export(WalSimbolSeparator1, WalSimbolSeparator2, "*"))
 		buf.WriteString("\n")
 	}

@@ -20,17 +20,20 @@ func TestTime1000000Trans(t *testing.T) {
 	r, _ := New(filePatch)
 	r.Start()
 	r.accounts.AddAccount("111")
-	r.accounts.AddAccount("112")
+	r.accounts.AddAccount("222")
 	r.accounts.Account("111").Balance("USD").Debit(9)
-	r.accounts.Account("112").Balance("USD").Debit(9)
-	p1 := &Part{Id: "111", Key: "USD", Amount: 0}
-	p2 := &Part{Id: "112", Key: "USD", Amount: 5}
+	r.accounts.Account("111").Balance("EUR").Debit(7)
+	r.accounts.Account("222").Balance("USD").Debit(9)
+	p1 := &Part{Id: "111", Key: "USD", Amount: 2}
+	p2 := &Part{Id: "222", Key: "USD", Amount: 5}
 	minus := []*Part{p1}
 	plus := []*Part{p2}
 	r.Transaction(&Order{
-		Credit: minus,
-		Debit:  plus,
+		Hash:  "abc",
+		Block: minus,
+		Debit: plus,
 	})
+	r.Stop()
 }
 
 /*
