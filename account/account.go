@@ -5,22 +5,59 @@ package account
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
+	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type Account struct {
+	//separator1 string
+	//separator2 string
+	//separator3 string
 	data map[string]*SubAccount
 }
 
 /*
 New - create new Account.
 */
-func New() *Account {
+func New() *Account { // separator1 string, separator2 string, separator3 string
 	return &Account{
+		//separator1: separator1,
+		//separator2: separator2,
+		//separator3: separator3,
 		data: make(map[string]*SubAccount),
 	}
 }
 
+/*
+func Import(args ...string) (*Account, error) { // separator1 string, separator2 string, separator3 string
+	switch len(args) {
+	case 3:
+		return &Account{
+			separator1: args[0],
+			separator2: args[1],
+			separator3: args[2],
+			data:       make(map[string]*SubAccount),
+		}, nil
+	case 4:
+		acc := &Account{
+			separator1: args[0],
+			separator2: args[1],
+			separator3: args[2],
+			data:       make(map[string]*SubAccount),
+		}
+		if err := acc.Import(args[3]); err != nil {
+			return nil, err
+		}
+		return acc, nil
+
+	default:
+		return nil, fmt.Errorf("Invalid number of arguments")
+	}
+
+}
+*/
 func (a *Account) Balance(id string) *SubAccount {
 	acc, ok := a.data[id]
 	if !ok {
@@ -28,6 +65,39 @@ func (a *Account) Balance(id string) *SubAccount {
 		a.data[id] = acc
 	}
 	return acc
+}
+
+func (a *Account) Export(separator1 string, separator2 string, separator3 string) string {
+	var buf bytes.Buffer
+	for key, acc := range a.data {
+		buf.WriteString(separator1)
+		buf.WriteString(key)
+		buf.WriteString(separator2)
+		buf.WriteString(acc.Export(separator2, separator3))
+	}
+	return buf.String()
+}
+
+func (a *Account) Import(separator1 string, separator2 string, separator3 string, str string) error {
+	subs := strings.Split(str, separator1)
+	//fmt.Println(" +++++ ", subs)
+	for i := 1; i < len(subs); i++ {
+		key := a.ejectKey(subs[i], separator2)
+		//fmt.Println(" ++", key, "+++++++++++++++++++++++++++ ")
+		//fmt.Println(" ++", subs[i], "++ ")
+		s, err := importSubAccount(subs[i], separator2, separator3)
+		if err != nil {
+			return err
+		}
+		a.data[key] = s
+	}
+	return nil
+}
+
+func (a *Account) ejectKey(str string, separator2 string) string {
+	subs := strings.SplitN(str, separator2, 2)
+	// fmt.Println(" ++^^++ ", subs)
+	return subs[0]
 }
 
 type Balance struct {
@@ -47,8 +117,52 @@ newAccount - create new Account.
 */
 func newSubAccount() *SubAccount {
 	return &SubAccount{
-		blocks: make(map[string]uint64),
+		Balance: Balance{},
+		blocks:  make(map[string]uint64),
 	}
+}
+
+func importSubAccount(str string, separator2 string, separator3 string) (*SubAccount, error) {
+	s := newSubAccount()
+	subs := strings.Split(str, separator2)
+
+	available, err := strconv.ParseUint(subs[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	s.Balance.available = available
+
+	blocked, err := strconv.ParseUint(subs[2], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	s.Balance.blocked = blocked
+
+	for i := 3; i < len(subs); i++ {
+		bl := strings.Split(subs[i], separator3)
+		sum, err := strconv.ParseUint(bl[1], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		s.blocks[bl[0]] = sum
+	}
+	return s, nil
+}
+
+func (s *SubAccount) Export(separator1 string, separator2 string) string {
+	var buf bytes.Buffer
+	buf.WriteString(strconv.FormatUint(s.Balance.available, 10))
+	buf.WriteString(separator1)
+	buf.WriteString(strconv.FormatUint(s.Balance.blocked, 10))
+
+	for k, u := range s.blocks {
+		buf.WriteString(separator1)
+		buf.WriteString(k)
+		buf.WriteString(separator2)
+		buf.WriteString(strconv.FormatUint(u, 10))
+	}
+
+	return buf.String()
 }
 
 func (s *SubAccount) Debit(amount uint64) (Balance, error) {
