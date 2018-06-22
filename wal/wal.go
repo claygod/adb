@@ -26,7 +26,7 @@ func New(patch string, fileName string, separator string) (*Wal, error) {
 	//	return nil, err
 	//}
 	w := &Wal{
-		m:         sync.Mutex{},
+		m: sync.Mutex{},
 		//file:      file,
 		time:      time.Now(),
 		separator: separator,

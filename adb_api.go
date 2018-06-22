@@ -7,7 +7,7 @@ package adb
 import (
 	"fmt"
 	"runtime"
-	"sync"
+	//"sync"
 	"sync/atomic"
 	"time"
 
@@ -133,6 +133,7 @@ type Part struct {
 	Amount uint64
 }
 
+/*
 type Wal struct {
 	sync.Mutex
 }
@@ -152,3 +153,4 @@ func (w *Wal) Save() error {
 func (w *Wal) Close() error {
 	return nil
 }
+*/

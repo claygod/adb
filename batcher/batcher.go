@@ -18,7 +18,8 @@ const logExt string = ".txt"
 
 const (
 	stateRun int64 = iota
-	stateStop
+	stateStops
+	stateStopped
 )
 
 const Sync bool = true
@@ -39,7 +40,7 @@ func New(wal Wal, ch chan *Task, ch2 chan *Task) *Batcher {
 
 	b := &Batcher{
 		batchSize: batchSize,
-		barrier:   stateStop,
+		barrier:   stateStopped,
 		wal:       wal,
 		//queue:     queue,
 		wg:   sync.WaitGroup{},
@@ -52,19 +53,21 @@ func New(wal Wal, ch chan *Task, ch2 chan *Task) *Batcher {
 }
 
 func (b *Batcher) StartChain(mode bool) *Batcher {
-	if atomic.CompareAndSwapInt64(&b.barrier, stateStop, stateRun) {
-		if mode == Sync {
+	for {
+		if atomic.CompareAndSwapInt64(&b.barrier, stateStopped, stateRun) {
 			go b.workerSyncChan(b.ch, b.ch2)
-		} else {
-
+			return b
 		}
 	}
-	return b
 }
 
 func (b *Batcher) Stop() *Batcher {
-	atomic.StoreInt64(&b.barrier, stateStop)
-	return b
+	for {
+		if atomic.LoadInt64(&b.barrier) == stateStopped {
+			return b
+		}
+		atomic.CompareAndSwapInt64(&b.barrier, stateRun, stateStops)
+	}
 }
 
 func (b *Batcher) SetBatchSize(size int64) *Batcher {
@@ -103,9 +106,12 @@ func (b *Batcher) workerSyncChan(ch chan *Task, ch2 chan *Task) {
 			f()
 		}
 
-		if b.barrier == stateStop { // b.wal.Save() != nil ||
+		if atomic.CompareAndSwapInt64(&b.barrier, stateStops, stateStopped) {
 			return
 		}
+		//if b.barrier == stateStops { // b.wal.Save() != nil ||
+		//	return
+		//}
 		// fileName := strconv.FormatUint((uint64(time.Now().Unix())>>8)<<8, 10)
 
 		//if wt := b.GetTime(); wt != walTime {
