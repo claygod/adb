@@ -21,6 +21,7 @@ func TestTime1000000Trans(t *testing.T) {
 	//}
 	r, _ := New(filePatch)
 	r.Start()
+	r.Load()
 	r.accounts.AddAccount("111")
 	r.accounts.AddAccount("222")
 	r.accounts.Account("111").Balance("USD").Debit(9)
@@ -41,6 +42,7 @@ func TestTime1000000Trans(t *testing.T) {
 func TestSave(t *testing.T) {
 	db, _ := New(filePatch)
 	db.Start()
+	// db.Load()
 
 	acc := account.New()
 	acc.Balance("USD").Debit(9)

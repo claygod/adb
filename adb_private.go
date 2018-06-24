@@ -25,6 +25,7 @@ const sizeBucket int64 = 256
 const (
 	WalSimbolSeparator1 string = "|"
 	WalSimbolSeparator2 string = ";"
+	WalSimbolSeparator3 string = "*"
 	WalSimbolBlock      string = "B"
 	WalSimbolUnblock    string = "U"
 	WalSimbolCredit     string = "C"

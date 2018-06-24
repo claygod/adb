@@ -6,6 +6,7 @@ package adb
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"runtime"
 	"sync/atomic"
@@ -21,7 +22,7 @@ type Adb struct {
 	accounts *Accounts
 	//answers    *Answers
 	state int64
-	patch string
+	path  string
 	//queue      *Queue
 	//queuesPool [256]*queue.Queue
 	batcher *batcher.Batcher
@@ -31,9 +32,10 @@ type Adb struct {
 	time    *time.Time
 }
 
-func New(patch string) (*Adb, error) {
+func New(path string) (*Adb, error) {
+	// ToDo: exists dir ?
 	fileName := "start.txt"
-	wal, err := wal.New(patch, fileName, WalSimbolSeparator1) //newWal()
+	wal, err := wal.New(path, fileName, WalSimbolSeparator1) //newWal()
 	if err != nil {
 		return nil, err
 	}
@@ -42,12 +44,12 @@ func New(patch string) (*Adb, error) {
 	//q := newQueue(sizeBucket * 16)
 	b := batcher.New(wal, ch, ch2)
 
-	r := &Adb{
+	adb := &Adb{
 		accounts: newAccounts(),
 		//answers:  newAnswers(),
 		//queue:   q,
 		state:   stateClosed,
-		patch:   patch,
+		path:    path,
 		batcher: b,
 		wal:     wal,
 		ch:      ch,
@@ -56,8 +58,7 @@ func New(patch string) (*Adb, error) {
 	}
 
 	b.SetBatchSize(sizeBucket) //.Start()
-
-	return r, nil
+	return adb, nil
 }
 
 func (a *Adb) Start() {
@@ -77,8 +78,14 @@ func (a *Adb) Save() {
 	a.Start()
 }
 
+func (a *Adb) Load() {
+	a.Stop()
+	a.loadFromDisk()
+	a.Start()
+}
+
 func (a *Adb) saveToDisk() error {
-	file, err := os.Create(a.patch + "adb.txt")
+	file, err := os.Create(a.path + "adb.txt")
 	if err != nil {
 		return err
 	}
@@ -89,7 +96,20 @@ func (a *Adb) saveToDisk() error {
 	return nil
 }
 
-func (a *Adb) load() {
+func (a *Adb) loadFromDisk() error {
+	file, err := ioutil.ReadFile(a.path + "adb.txt")
+	if err != nil {
+		//fmt.Println(err)
+		panic(err)
+		// ToDo: read snapshots & etc.
+		_, err := os.Create(a.path + "adb.txt")
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	a.accounts.Import(string(file))
+	return nil
 }
 
 func (a *Adb) Transaction(order *Order) (*Answer, error) {

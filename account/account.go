@@ -80,11 +80,8 @@ func (a *Account) Export(separator1 string, separator2 string, separator3 string
 
 func (a *Account) Import(separator1 string, separator2 string, separator3 string, str string) error {
 	subs := strings.Split(str, separator1)
-	//fmt.Println(" +++++ ", subs)
 	for i := 1; i < len(subs); i++ {
 		key := a.ejectKey(subs[i], separator2)
-		//fmt.Println(" ++", key, "+++++++++++++++++++++++++++ ")
-		//fmt.Println(" ++", subs[i], "++ ")
 		s, err := importSubAccount(subs[i], separator2, separator3)
 		if err != nil {
 			return err
@@ -96,7 +93,6 @@ func (a *Account) Import(separator1 string, separator2 string, separator3 string
 
 func (a *Account) ejectKey(str string, separator2 string) string {
 	subs := strings.SplitN(str, separator2, 2)
-	// fmt.Println(" ++^^++ ", subs)
 	return subs[0]
 }
 
@@ -107,8 +103,6 @@ type Balance struct {
 
 type SubAccount struct {
 	Balance
-	//available uint64
-	//blocked   uint64
 	blocks map[string]uint64
 }
 

@@ -48,7 +48,7 @@ func BenchmarkTransaction(b *testing.B) { // GOGC=off go test -bench=BenchmarkTr
 
 func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
-	db, _ := New("./log/")
+	db, _ := New(filePatch)
 	db.Start()
 	for i := 0; i < 256; i++ {
 		db.accounts.AddAccount(strconv.Itoa(i))
