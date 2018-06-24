@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 	//"time"
-	// "github.com/claygod/adb/transaction"
+	"github.com/claygod/adb/account"
 )
 
 const filePatch = "./log/"
@@ -68,7 +68,7 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 	})
 	i := 0
 	// runtime.GOMAXPROCS(1)
-	b.SetParallelism(16)
+	b.SetParallelism(32)
 	b.StartTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -80,6 +80,31 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 	})
 }
 
+func BenchmarkSave(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
+	b.StopTimer()
+	db, _ := New(filePatch)
+	db.Start()
+
+	acc := account.New()
+	acc.Balance("USD").Debit(9)
+	acc.Balance("EUR").Debit(9)
+	acc.Balance("USD").Block("d8f4590320e1343a915b6394170650a8f35d6926", 1)
+	for i := 0; i < 1000; i++ {
+		db.accounts.AddAccount(strconv.Itoa(i))
+		db.accounts.data[strconv.Itoa(i)] = acc
+		//db.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
+		//db.accounts.Account(strconv.Itoa(i)).Balance("EUR").Debit(9)
+		//db.accounts.Account(strconv.Itoa(i)).Balance("USD").Block("d8f4590320e1343a915b6394170650a8f35d6926", 1)
+	}
+	b.SetParallelism(1)
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		db.Save()
+	}
+}
+
+/**/
 /*
 func BenchmarkFsyncSequense(b *testing.B) {
 	b.StopTimer()

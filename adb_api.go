@@ -68,10 +68,16 @@ func (a *Adb) Start() {
 func (a *Adb) Stop() {
 	atomic.StoreInt64(&a.state, stateClosed)
 	a.batcher.Stop()
-	a.save()
+	a.saveToDisk()
 }
 
-func (a *Adb) save() error {
+func (a *Adb) Save() {
+	a.Stop()
+	a.saveToDisk()
+	a.Start()
+}
+
+func (a *Adb) saveToDisk() error {
 	file, err := os.Create(a.patch + "adb.txt")
 	if err != nil {
 		return err

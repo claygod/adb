@@ -8,7 +8,9 @@ import (
 	//"fmt"
 	"testing"
 	//"time"
-	// "github.com/claygod/adb/transaction"
+	"strconv"
+
+	"github.com/claygod/adb/account"
 )
 
 func TestTime1000000Trans(t *testing.T) {
@@ -36,25 +38,26 @@ func TestTime1000000Trans(t *testing.T) {
 	r.Stop()
 }
 
-/*
-func TestTime1000000Trans(t *testing.T) {
-	tc := transaction.New()
-	if !tc.Start() {
-		// t.Error("Now the start is possible!")
-	}
-	r := NewReception(&tc)
+func TestSave(t *testing.T) {
+	db, _ := New(filePatch)
+	db.Start()
 
-	cnt := 100
-	// prepare
-	tArray := ForTestGenTransactionsArray(cnt)
-	// time.Sleep(1 * time.Second)
-
-	for i := 0; i < cnt; i++ {
-		r.ExeTransaction(tArray[i])
+	acc := account.New()
+	acc.Balance("USD").Debit(9)
+	acc.Balance("EUR").Debit(9)
+	acc.Balance("USD").Block("d8f4590320e1343a915b6394170650a8f35d6926", 1)
+	for i := 0; i < 100; i++ {
+		db.accounts.AddAccount(strconv.Itoa(i))
+		db.accounts.data[strconv.Itoa(i)] = acc
+		//db.accounts.Account(strconv.Itoa(i)).Balance("USD").Debit(9)
+		//db.accounts.Account(strconv.Itoa(i)).Balance("EUR").Debit(9)
+		//db.accounts.Account(strconv.Itoa(i)).Balance("USD").Block("d8f4590320e1343a915b6394170650a8f35d6926", 1)
 	}
+
+	db.Save()
 }
 
-
+/*
 func TestCreditPrepare(t *testing.T) {
 	tc := transaction.New()
 	if !tc.Start() {

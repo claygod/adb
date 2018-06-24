@@ -29,10 +29,10 @@ type Batcher struct {
 	batchSize int64
 	barrier   int64
 	wal       Wal
-	wg   sync.WaitGroup
-	ch   chan *Task
-	ch2  chan *Task
-	time time.Time
+	wg        sync.WaitGroup
+	ch        chan *Task
+	ch2       chan *Task
+	time      time.Time
 }
 
 func New(wal Wal, ch chan *Task, ch2 chan *Task) *Batcher {
@@ -41,10 +41,10 @@ func New(wal Wal, ch chan *Task, ch2 chan *Task) *Batcher {
 		batchSize: batchSize,
 		barrier:   stateStopped,
 		wal:       wal,
-		wg:   sync.WaitGroup{},
-		ch:   ch,
-		ch2:  ch2,
-		time: time.Now(),
+		wg:        sync.WaitGroup{},
+		ch:        ch,
+		ch2:       ch2,
+		time:      time.Now(),
 	}
 	b.wal.Filename(b.TimeToString(b.GetTime()))
 	return b
@@ -56,6 +56,7 @@ func (b *Batcher) Start() *Batcher {
 			go b.worker(b.ch, b.ch2)
 			return b
 		}
+		runtime.Gosched()
 	}
 }
 
@@ -65,6 +66,7 @@ func (b *Batcher) Stop() *Batcher {
 			return b
 		}
 		atomic.CompareAndSwapInt64(&b.barrier, stateRun, stateStops)
+		runtime.Gosched()
 	}
 }
 
@@ -112,6 +114,7 @@ func (b *Batcher) GetTime() uint64 {
 func (b *Batcher) TimeToString(wt uint64) string {
 	return strconv.FormatUint(wt, 10) + logExt
 }
+
 /*
 type Queue interface {
 	GetBatch(int64) []*func() (int64, []byte) //Input

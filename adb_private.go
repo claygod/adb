@@ -22,12 +22,14 @@ const (
 )
 const sizeBucket int64 = 256
 
-const WalSimbolSeparator1 string = "|"
-const WalSimbolSeparator2 string = ";"
-const WalSimbolBlock string = "Block"
-const WalSimbolUnblock string = "Unblock"
-const WalSimbolCredit string = "Credit"
-const WalSimbolDebit string = "Debit"
+const (
+	WalSimbolSeparator1 string = "|"
+	WalSimbolSeparator2 string = ";"
+	WalSimbolBlock      string = "B"
+	WalSimbolUnblock    string = "U"
+	WalSimbolCredit     string = "C"
+	WalSimbolDebit      string = "D"
+)
 
 func (a *Adb) getTask(order *Order, ans *Answer) *batcher.Task {
 	t := &batcher.Task{}
