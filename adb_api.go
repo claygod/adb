@@ -44,7 +44,7 @@ func New(path string) (*Adb, error) {
 	ch := make(chan *batcher.Task, 1024)
 	ch2 := make(chan *batcher.Task, 1024)
 	//q := newQueue(sizeBucket * 16)
-	b := batcher.New(wal, ch, ch2)
+	b := batcher.New(wal, ch, ch2, logExt)
 
 	adb := &Adb{
 		accounts: newAccounts(symbol),
@@ -88,7 +88,7 @@ func (a *Adb) Load() {
 }
 
 func (a *Adb) saveToDisk() error {
-	file, err := os.Create(a.path + "adb.txt")
+	file, err := os.Create(a.path + "adb" + dbExt)
 	if err != nil {
 		return err
 	}
@@ -100,12 +100,12 @@ func (a *Adb) saveToDisk() error {
 }
 
 func (a *Adb) loadFromDisk() error {
-	file, err := ioutil.ReadFile(a.path + "adb.txt")
+	file, err := ioutil.ReadFile(a.path + "adb" + dbExt)
 	if err != nil {
 		//fmt.Println(err)
 		panic(err)
 		// ToDo: read snapshots & etc.
-		_, err := os.Create(a.path + "adb.txt")
+		_, err := os.Create(a.path + "adb" + dbExt)
 		if err != nil {
 			return err
 		}
@@ -170,10 +170,6 @@ type Part struct {
 	Id     string
 	Key    string
 	Amount uint64
-}
-
-type Snapshoter struct {
-	accounts *Accounts
 }
 
 /*

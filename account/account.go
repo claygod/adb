@@ -12,9 +12,6 @@ import (
 )
 
 type Account struct {
-	//separator1 string
-	//separator2 string
-	//separator3 string
 	data map[string]*SubAccount
 }
 
@@ -23,9 +20,6 @@ New - create new Account.
 */
 func New() *Account { // separator1 string, separator2 string, separator3 string
 	return &Account{
-		//separator1: separator1,
-		//separator2: separator2,
-		//separator3: separator3,
 		data: make(map[string]*SubAccount),
 	}
 }

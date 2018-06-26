@@ -14,7 +14,8 @@ import (
 )
 
 const batchSize int64 = 1024
-const logExt string = ".txt"
+
+//const logExt string = ".txt"
 
 const (
 	stateRun int64 = iota
@@ -28,6 +29,7 @@ const Async bool = false
 type Batcher struct {
 	batchSize int64
 	barrier   int64
+	logExt    string
 	wal       Wal
 	wg        sync.WaitGroup
 	ch        chan *Task
@@ -35,11 +37,12 @@ type Batcher struct {
 	time      time.Time
 }
 
-func New(wal Wal, ch chan *Task, ch2 chan *Task) *Batcher {
+func New(wal Wal, ch chan *Task, ch2 chan *Task, logExt string) *Batcher {
 
 	b := &Batcher{
 		batchSize: batchSize,
 		barrier:   stateStopped,
+		logExt:    logExt,
 		wal:       wal,
 		wg:        sync.WaitGroup{},
 		ch:        ch,
@@ -112,7 +115,7 @@ func (b *Batcher) GetTime() uint64 {
 }
 
 func (b *Batcher) TimeToString(wt uint64) string {
-	return strconv.FormatUint(wt, 10) + logExt
+	return strconv.FormatUint(wt, 10) + b.logExt
 }
 
 /*
