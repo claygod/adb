@@ -30,12 +30,14 @@ type Adb struct {
 	ch      chan *batcher.Task
 	ch2     chan *batcher.Task
 	time    *time.Time
+	symbol  *Symbol
 }
 
 func New(path string) (*Adb, error) {
 	// ToDo: exists dir ?
+	symbol := newSymbol()
 	fileName := "start.txt"
-	wal, err := wal.New(path, fileName, WalSimbolSeparator1) //newWal()
+	wal, err := wal.New(path, fileName, symbol.Separator1) //newWal()
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +47,7 @@ func New(path string) (*Adb, error) {
 	b := batcher.New(wal, ch, ch2)
 
 	adb := &Adb{
-		accounts: newAccounts(),
+		accounts: newAccounts(symbol),
 		//answers:  newAnswers(),
 		//queue:   q,
 		state:   stateClosed,
@@ -55,6 +57,7 @@ func New(path string) (*Adb, error) {
 		ch:      ch,
 		ch2:     ch2,
 		time:    &time.Time{},
+		symbol:  symbol,
 	}
 
 	b.SetBatchSize(sizeBucket) //.Start()
@@ -167,6 +170,10 @@ type Part struct {
 	Id     string
 	Key    string
 	Amount uint64
+}
+
+type Snapshoter struct {
+	accounts *Accounts
 }
 
 /*

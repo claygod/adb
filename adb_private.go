@@ -15,23 +15,6 @@ import (
 	"github.com/claygod/adb/batcher"
 )
 
-// Hasp state
-const (
-	stateClosed int64 = iota
-	stateOpen
-)
-const sizeBucket int64 = 256
-
-const (
-	WalSimbolSeparator1 string = "|"
-	WalSimbolSeparator2 string = ";"
-	WalSimbolSeparator3 string = "*"
-	WalSimbolBlock      string = "B"
-	WalSimbolUnblock    string = "U"
-	WalSimbolCredit     string = "C"
-	WalSimbolDebit      string = "D"
-)
-
 func (a *Adb) getTask(order *Order, ans *Answer) *batcher.Task {
 	t := &batcher.Task{}
 	f1 := func() {
@@ -134,34 +117,34 @@ func (a *Adb) orderForWal(order *Order) string {
 	var buf bytes.Buffer
 
 	for _, part := range order.Block {
-		buf.WriteString(WalSimbolSeparator1)
-		buf.WriteString(WalSimbolBlock)
+		buf.WriteString(a.symbol.Separator1)
+		buf.WriteString(a.symbol.Block)
 		a.partToBuf(part, &buf)
 	}
 	for _, part := range order.Unblock {
-		buf.WriteString(WalSimbolSeparator1)
-		buf.WriteString(WalSimbolUnblock)
+		buf.WriteString(a.symbol.Separator1)
+		buf.WriteString(a.symbol.Unblock)
 		a.partToBuf(part, &buf)
 	}
 	for _, part := range order.Credit {
-		buf.WriteString(WalSimbolSeparator1)
-		buf.WriteString(WalSimbolCredit)
+		buf.WriteString(a.symbol.Separator1)
+		buf.WriteString(a.symbol.Credit)
 		a.partToBuf(part, &buf)
 	}
 	for _, part := range order.Debit {
-		buf.WriteString(WalSimbolSeparator1)
-		buf.WriteString(WalSimbolDebit)
+		buf.WriteString(a.symbol.Separator1)
+		buf.WriteString(a.symbol.Debit)
 		a.partToBuf(part, &buf)
 	}
 	return buf.String()
 }
 
 func (a *Adb) partToBuf(part *Part, buf *bytes.Buffer) {
-	buf.WriteString(WalSimbolSeparator2)
+	buf.WriteString(a.symbol.Separator2)
 	buf.WriteString(part.Id)
-	buf.WriteString(WalSimbolSeparator2)
+	buf.WriteString(a.symbol.Separator2)
 	buf.WriteString(part.Key)
-	buf.WriteString(WalSimbolSeparator2)
+	buf.WriteString(a.symbol.Separator2)
 	buf.WriteString(strconv.FormatUint(part.Amount, 10))
 }
 
