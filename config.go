@@ -12,6 +12,7 @@ const (
 const sizeBucket int64 = 256
 const logExt string = ".log"
 const dbExt string = ".db"
+const snapExt string = ".snap"
 
 /*
 const (

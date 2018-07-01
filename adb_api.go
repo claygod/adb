@@ -25,16 +25,21 @@ type Adb struct {
 	path  string
 	//queue      *Queue
 	//queuesPool [256]*queue.Queue
-	batcher *batcher.Batcher
-	wal     *wal.Wal
-	ch      chan *batcher.Task
-	ch2     chan *batcher.Task
-	time    *time.Time
-	symbol  *Symbol
+	batcher  *batcher.Batcher
+	wal      *wal.Wal
+	snapshot *Snapshoter
+	ch       chan *batcher.Task
+	ch2      chan *batcher.Task
+	time     *time.Time
+	symbol   *Symbol
 }
 
 func New(path string) (*Adb, error) {
 	// ToDo: exists dir ?
+
+	// проверка на то, как закончилась последняя сессия
+	// проводится ДО запуска базы !!!
+
 	symbol := newSymbol()
 	fileName := "start.txt"
 	wal, err := wal.New(path, fileName, symbol.Separator1) //newWal()
@@ -50,14 +55,15 @@ func New(path string) (*Adb, error) {
 		accounts: newAccounts(symbol),
 		//answers:  newAnswers(),
 		//queue:   q,
-		state:   stateClosed,
-		path:    path,
-		batcher: b,
-		wal:     wal,
-		ch:      ch,
-		ch2:     ch2,
-		time:    &time.Time{},
-		symbol:  symbol,
+		state:    stateClosed,
+		path:     path,
+		batcher:  b,
+		wal:      wal,
+		snapshot: newSnapshoter(symbol, path),
+		ch:       ch,
+		ch2:      ch2,
+		time:     &time.Time{},
+		symbol:   symbol,
 	}
 
 	b.SetBatchSize(sizeBucket) //.Start()
@@ -78,6 +84,7 @@ func (a *Adb) Stop() {
 func (a *Adb) Save() {
 	a.Stop()
 	a.saveToDisk()
+	a.snapshot.clean()
 	a.Start()
 }
 

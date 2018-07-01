@@ -5,6 +5,11 @@ package adb
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"sort"
+	"strings"
 	"sync/atomic"
 )
 
@@ -23,8 +28,45 @@ func newSnapshoter(symbol *Symbol, path string) *Snapshoter {
 	}
 }
 
-func (s *Snapshoter) start() {
+func (s *Snapshoter) start() error {
+	files, err := ioutil.ReadDir(s.path)
+	if err != nil {
+		return err
+	}
+	snaps := make([]string, 0)
+	logs := make([]string, 0)
+	for _, fileName := range files {
+		fns := fileName.Name()
+		if strings.HasSuffix(fns, snapExt) {
+			snaps = append(snaps, fns)
+		}
+		if strings.HasSuffix(fns, logExt) {
+			logs = append(logs, fns)
+		}
+	}
+	// При старте по идее не должно быть снапов и логов!
+	if len(snaps) > 0 || len(logs) > 0 {
+		sort.Strings(snaps)
+		sort.Strings(logs)
+		return fmt.Errorf("Logs: %v \nSnaps:%v", logs, snaps)
+	}
+	return nil
+}
 
+func (s *Snapshoter) clean() error {
+	files, err := ioutil.ReadDir(s.path)
+	if err != nil {
+		return err
+	}
+	for _, fileName := range files {
+		fns := fileName.Name()
+		if strings.HasSuffix(fns, snapExt) || strings.HasSuffix(fns, logExt) {
+			if err := os.Remove(s.path + fns); err != nil {
+				return nil
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Snapshoter) stop() {
