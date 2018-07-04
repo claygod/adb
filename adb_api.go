@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
+	"sort"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -35,14 +37,16 @@ type Adb struct {
 }
 
 func New(path string) (*Adb, error) {
-	// ToDo: exists dir ?
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, fmt.Errorf("'%s' does non exists", path)
+	}
 
 	// проверка на то, как закончилась последняя сессия
 	// проводится ДО запуска базы !!!
 
 	symbol := newSymbol()
 	fileName := "start.txt"
-	wal, err := wal.New(path, fileName, symbol.Separator1) //newWal()
+	wal, err := wal.New(path, fileName, symbol.Separator1) //ToDo: del fileName
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +92,48 @@ func (a *Adb) Save() {
 	a.Start()
 }
 
-func (a *Adb) Load() {
+func (a *Adb) Load() error {
 	a.Stop()
-	a.loadFromDisk()
-	a.Start()
+	defer a.Start()
+	//dbFileName := a.path + "adb" + dbExt
+	// тут получить имя текущего спапа
+	// загрузить его и "догнать" логами
+	snapsList, err := a.listFiles(snapExt, a.path)
+	if err != nil {
+		return err
+	}
+	ln := len(snapsList)
+	switch {
+	case ln == 0:
+		return a.loadFromDisk(a.path + "adb" + dbExt)
+	case ln == 1:
+		return a.loadFromDisk(snapsList[ln-1])
+	case ln > 1:
+		return a.loadFromDisk(snapsList[ln-1])
+	}
+	return nil
+
+	/*
+		if snapName, err := a.snapshot.currentSnap(); err != nil {
+			return a.loadFromDisk(a.path + "adb" + dbExt)
+		} else {
+			return a.loadFromDisk(snapName)
+		}
+
+			if a.snapshot.start() != nil {
+
+				snapName, err := a.snapshot.currentSnap()
+				if err != nil {
+					a.loadFromDisk(dbFileName)
+				} else {
+					a.loadFromDisk(snapName)
+				}
+			} else {
+				a.loadFromDisk(dbFileName)
+			}
+	*/
+
+	//a.Start()
 }
 
 func (a *Adb) saveToDisk() error {
@@ -106,13 +148,12 @@ func (a *Adb) saveToDisk() error {
 	return nil
 }
 
-func (a *Adb) loadFromDisk() error {
-	file, err := ioutil.ReadFile(a.path + "adb" + dbExt)
+func (a *Adb) loadFromDisk(fileName string) error {
+	file, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		//fmt.Println(err)
-		panic(err)
+		// panic(err)
 		// ToDo: read snapshots & etc.
-		_, err := os.Create(a.path + "adb" + dbExt)
+		_, err := os.Create(fileName)
 		if err != nil {
 			return err
 		}
@@ -120,6 +161,23 @@ func (a *Adb) loadFromDisk() error {
 	}
 	a.accounts.Import(string(file))
 	return nil
+}
+
+func (a *Adb) listFiles(ext string, path string) ([]string, error) {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]string, 0)
+	for _, fileName := range files {
+		if fns := fileName.Name(); strings.HasSuffix(fns, ext) {
+			list = append(list, fns)
+		}
+	}
+	if len(list) > 0 {
+		sort.Strings(list)
+	}
+	return list, nil
 }
 
 func (a *Adb) Transaction(order *Order) (*Answer, error) {

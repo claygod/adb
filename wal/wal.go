@@ -6,7 +6,10 @@ package wal
 
 import (
 	"bytes"
+	//"io/ioutil"
 	"os"
+	//"sort"
+	//"strings"
 	"sync"
 	"time"
 )
@@ -17,10 +20,10 @@ type Wal struct {
 	buf       bytes.Buffer
 	time      time.Time
 	separator string
-	patch     string
+	path      string
 }
 
-func New(patch string, fileName string, separator string) (*Wal, error) {
+func New(path string, fileName string, separator string) (*Wal, error) {
 	//file, err := os.Create(patch + fileName)
 	//if err != nil {
 	//	return nil, err
@@ -30,7 +33,7 @@ func New(patch string, fileName string, separator string) (*Wal, error) {
 		//file:      file,
 		time:      time.Now(),
 		separator: separator,
-		patch:     patch,
+		path:      path,
 	}
 	return w, nil
 }
@@ -62,7 +65,7 @@ func (w *Wal) Save() error {
 func (w *Wal) Filename(fileName string) error {
 	w.m.Lock()
 	w.file.Close()
-	file, err := os.Create(w.patch + fileName)
+	file, err := os.Create(w.path + fileName)
 	if err != nil {
 		return err
 	}
@@ -76,3 +79,25 @@ func (w *Wal) Close() error {
 	defer w.m.Unlock()
 	return w.file.Close()
 }
+
+/*
+func (w *Wal) ListLogFiles(logExt string) ([]string, error) {
+	// No parallel mode!
+	//w.m.Lock()
+	//defer w.m.Unlock()
+	files, err := ioutil.ReadDir(w.path)
+	if err != nil {
+		return nil, err
+	}
+	logs := make([]string, 0)
+	for _, fileName := range files {
+		if fns := fileName.Name(); strings.HasSuffix(fns, logExt) {
+			logs = append(logs, fns)
+		}
+	}
+	if len(logs) > 0 {
+		sort.Strings(logs)
+	}
+	return logs, nil
+}
+*/

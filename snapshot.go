@@ -69,6 +69,30 @@ func (s *Snapshoter) clean() error {
 	return nil
 }
 
+func (s *Snapshoter) currentSnap() (string, error) {
+	files, err := ioutil.ReadDir(s.path)
+	if err != nil {
+		return "", err
+	}
+	snaps := make([]string, 0)
+	for _, fileName := range files {
+		fns := fileName.Name()
+		if strings.HasSuffix(fns, snapExt) {
+			snaps = append(snaps, fns)
+		}
+	}
+
+	if len(snaps) > 0 {
+		sort.Strings(snaps)
+		if ln := len(snaps); ln > 1 {
+			return snaps[ln-2], nil
+		} else {
+			return snaps[ln-1], nil
+		}
+	}
+	return "", fmt.Errorf("Snapshot does not exists")
+}
+
 func (s *Snapshoter) stop() {
 
 }
