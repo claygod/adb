@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 	//"time"
-	"github.com/claygod/adb/account"
+	//"github.com/claygod/adb/account"
 )
 
 const filePatch = "./log/"
@@ -80,6 +80,7 @@ func BenchmarkTransactionParallel(b *testing.B) { // GOGC=off go test -bench=Ben
 	})
 }
 
+/*
 func BenchmarkSave(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransaction -cpuprofile cpu.out
 	b.StopTimer()
 	db, _ := New(filePatch)
@@ -104,7 +105,7 @@ func BenchmarkSave(b *testing.B) { // GOGC=off go test -bench=BenchmarkTransacti
 	}
 }
 
-/**/
+*/
 /*
 func BenchmarkFsyncSequense(b *testing.B) {
 	b.StopTimer()

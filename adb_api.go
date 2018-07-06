@@ -6,11 +6,8 @@ package adb
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"runtime"
-	"sort"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -95,7 +92,6 @@ func (a *Adb) Save() {
 func (a *Adb) Load() error {
 	a.Stop()
 	defer a.Start()
-	//dbFileName := a.path + "adb" + dbExt
 	// тут получить имя текущего спапа
 	// загрузить его и "догнать" логами
 	snapsList, err := a.listFiles(snapExt, a.path)
@@ -107,78 +103,30 @@ func (a *Adb) Load() error {
 	case ln == 0:
 		return a.loadFromDisk(a.path + "adb" + dbExt)
 	case ln == 1:
-		return a.loadFromDisk(snapsList[ln-1])
+		return a.loadSnap(snapsList[ln-1])
 	case ln > 1:
-		return a.loadFromDisk(snapsList[ln-1])
+		return a.loadSnap(snapsList[ln-2])
 	}
 	return nil
-
-	/*
-		if snapName, err := a.snapshot.currentSnap(); err != nil {
-			return a.loadFromDisk(a.path + "adb" + dbExt)
-		} else {
-			return a.loadFromDisk(snapName)
-		}
-
-			if a.snapshot.start() != nil {
-
-				snapName, err := a.snapshot.currentSnap()
-				if err != nil {
-					a.loadFromDisk(dbFileName)
-				} else {
-					a.loadFromDisk(snapName)
-				}
-			} else {
-				a.loadFromDisk(dbFileName)
-			}
-	*/
-
 	//a.Start()
 }
 
-func (a *Adb) saveToDisk() error {
-	file, err := os.Create(a.path + "adb" + dbExt)
-	if err != nil {
-		return err
-	}
-	_, err = file.WriteString(a.accounts.Export())
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *Adb) loadFromDisk(fileName string) error {
-	file, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		// panic(err)
-		// ToDo: read snapshots & etc.
-		_, err := os.Create(fileName)
-		if err != nil {
+func (a *Adb) exeOrders(ords []*Order) error {
+	for _, ord := range ords {
+		if _, err := a.Transaction(ord); err != nil {
 			return err
 		}
-		return nil
 	}
-	a.accounts.Import(string(file))
 	return nil
 }
 
-func (a *Adb) listFiles(ext string, path string) ([]string, error) {
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-	list := make([]string, 0)
-	for _, fileName := range files {
-		if fns := fileName.Name(); strings.HasSuffix(fns, ext) {
-			list = append(list, fns)
-		}
-	}
-	if len(list) > 0 {
-		sort.Strings(list)
-	}
-	return list, nil
-}
+/*
+ToDo: что делать, если транзакция проведена, а ответ не успели отправить,
+тогда получатель может не знать, что операция проведена (успешно/неуспешно).
+Возможен двухфазовый подход - сначала отдаём номер транзакции и потом получаем,
+исполняем и сохраняем номер транзакции с её результатом. При получении лучше
+проверять, а следовательно, лучше давать номер и хэш, чтобы потом проверять.
+*/
 
 func (a *Adb) Transaction(order *Order) (*Answer, error) {
 	//fmt.Println(order)
