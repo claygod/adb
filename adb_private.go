@@ -96,6 +96,22 @@ func (a *Adb) getTask(order *Order, ans *Answer) *batcher.Task {
 	return t
 }
 
+func (a *Adb) transactionUnsafe(order *Order) {
+	for _, part := range order.Block {
+		a.accounts.Account(part.Id).Balance(part.Key).BlockUnsafe(order.Hash, part.Amount)
+	}
+	for _, part := range order.Unblock {
+		a.accounts.Account(part.Id).Balance(part.Key).UnblockUnsafe(order.Hash, part.Amount)
+	}
+	for _, part := range order.Credit {
+		a.accounts.Account(part.Id).Balance(part.Key).CreditUnsafe(order.Hash, part.Amount)
+	}
+	for _, part := range order.Debit {
+		a.accounts.Account(part.Id).Balance(part.Key).DebitUnsafe(part.Amount)
+	}
+
+}
+
 func (a *Adb) balancesAddBalance(id string, key string, balances map[string]map[string]account.Balance, balance account.Balance) {
 	if _, ok := balances[id]; !ok {
 		balances[id] = make(map[string]account.Balance)

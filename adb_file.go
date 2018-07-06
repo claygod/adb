@@ -30,8 +30,8 @@ func (a *Adb) loadSnap(snapName string) error {
 		if err != nil {
 			return err
 		}
-		if err := a.exeOrders(ords); err != nil {
-			return err
+		for _, ord := range ords {
+			a.transactionUnsafe(ord)
 		}
 	}
 	return nil

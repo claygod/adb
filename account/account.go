@@ -163,6 +163,11 @@ func (s *SubAccount) Debit(amount uint64) (Balance, error) {
 	return s.Balance, nil
 }
 
+func (s *SubAccount) DebitUnsafe(amount uint64) {
+	newAviable := s.available + amount
+	s.available = newAviable
+}
+
 /*
 Тут есть два варианта по блокированию:
 1) блокируется на конкретный хэш конкретная сумма, и блокированная сумма должна точно совпадать со списываемой потом
@@ -190,6 +195,14 @@ func (s *SubAccount) Block(key string, amount uint64) (Balance, error) {
 	s.available = newAviable
 	s.blocked = newBlocked
 	return s.Balance, nil
+}
+
+func (s *SubAccount) BlockUnsafe(key string, amount uint64) {
+	newAviable := s.available - amount
+	newBlocked := s.blocked + amount
+	s.blocks[key] = amount
+	s.available = newAviable
+	s.blocked = newBlocked
 }
 
 func (s *SubAccount) BlockNoFix(amount uint64) (Balance, error) {
@@ -226,6 +239,14 @@ func (s *SubAccount) Unblock(key string, amount uint64) (Balance, error) {
 	return s.Balance, nil
 }
 
+func (s *SubAccount) UnblockUnsafe(key string, amount uint64) {
+	newAviable := s.available + amount
+	newBlocked := s.blocked - amount
+	delete(s.blocks, key)
+	s.available = newAviable
+	s.blocked = newBlocked
+}
+
 func (s *SubAccount) UnblockNoFix(amount uint64) (Balance, error) {
 	newAviable := s.available + amount
 	newBlocked := s.blocked - amount
@@ -250,6 +271,12 @@ func (s *SubAccount) Credit(key string, amount uint64) (Balance, error) {
 	delete(s.blocks, key)
 	s.blocked = newBlocked
 	return s.Balance, nil
+}
+
+func (s *SubAccount) CreditUnsafe(key string, amount uint64) {
+	newBlocked := s.blocked - amount
+	delete(s.blocks, key)
+	s.blocked = newBlocked
 }
 
 func (s *SubAccount) WriteOff(amount uint64) (Balance, error) { //  Credit operation without intermediate blocking of funds.
