@@ -6,12 +6,11 @@ package wal
 
 import (
 	"bytes"
-	//"io/ioutil"
 	"os"
-	//"sort"
-	//"strings"
 	"sync"
 	"time"
+
+	"github.com/claygod/adb/logname"
 )
 
 type Wal struct {
@@ -21,19 +20,25 @@ type Wal struct {
 	time      time.Time
 	separator string
 	path      string
+	logname   *logname.LogName
+	curname   string
+	ext       string
 }
 
-func New(path string, fileName string, separator string) (*Wal, error) {
-	//file, err := os.Create(patch + fileName)
-	//if err != nil {
-	//	return nil, err
-	//}
+func New(path string, ln *logname.LogName, separator string, ext string) (*Wal, error) {
+	file, err := os.Create(path + ln.GetName() + ext)
+	if err != nil {
+		return nil, err
+	}
 	w := &Wal{
-		m: sync.Mutex{},
-		//file:      file,
+		m:         sync.Mutex{},
+		file:      file,
 		time:      time.Now(),
 		separator: separator,
 		path:      path,
+		logname:   ln,
+		curname:   ln.GetName(),
+		ext:       ext,
 	}
 	return w, nil
 }
@@ -59,13 +64,17 @@ func (w *Wal) Log(s string) error {
 func (w *Wal) Save() error {
 	w.m.Lock()
 	defer w.m.Unlock()
-	return w.file.Sync()
+	res := w.file.Sync()
+	if name := w.logname.GetName(); name != w.curname {
+		w.filename(name)
+	}
+	return res
 }
 
-func (w *Wal) Filename(fileName string) error {
+func (w *Wal) filename(fileName string) error {
 	w.m.Lock()
 	w.file.Close()
-	file, err := os.Create(w.path + fileName)
+	file, err := os.Create(w.path + fileName + w.ext)
 	if err != nil {
 		return err
 	}

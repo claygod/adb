@@ -6,21 +6,25 @@ package wal
 
 import (
 	"os"
-	"strconv"
+	//"strconv"
 	"testing"
-	"time"
+	//"time"
+
+	"github.com/claygod/adb/logname"
 )
 
 const filePatch = "./log/"
 
 func TestNewWal(t *testing.T) {
-	fileName := strconv.FormatUint((uint64(time.Now().Unix())>>8)<<8, 10)
-	w, err := New(filePatch, fileName+".txt", "@")
+	//fileName := strconv.FormatUint((uint64(time.Now().Unix())>>8)<<8, 10)
+	ln := logname.New(8)
+	fileName := ln.GetName()
+	w, err := New(filePatch, ln, "@", ".log")
 	if err != nil {
 		t.Error(err)
 	}
 	w.Log("223:35432:USD:+:5")
 	w.Log("224:35432:USD:-:2")
 	w.Save()
-	os.Remove(filePatch + fileName + ".txt")
+	os.Remove(filePatch + fileName + ".log")
 }

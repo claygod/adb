@@ -49,7 +49,7 @@ func New(wal Wal, ch chan *Task, ch2 chan *Task, logExt string) *Batcher {
 		ch2:       ch2,
 		time:      time.Now(),
 	}
-	b.wal.Filename(b.TimeToString(b.GetTime()))
+	// b.wal.Filename(b.TimeToString(b.GetTime()))
 	return b
 }
 
@@ -126,7 +126,7 @@ type Queue interface {
 type Wal interface {
 	Log(string) error // key, log
 	Save() error
-	Filename(string) error
+	// Filename(string) error
 	Close() error
 }
 

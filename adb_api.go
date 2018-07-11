@@ -13,6 +13,7 @@ import (
 
 	"github.com/claygod/adb/account"
 	"github.com/claygod/adb/batcher"
+	"github.com/claygod/adb/logname"
 	"github.com/claygod/adb/wal"
 )
 
@@ -42,8 +43,9 @@ func New(path string) (*Adb, error) {
 	// проводится ДО запуска базы !!!
 
 	symbol := newSymbol()
-	fileName := "start.txt"
-	wal, err := wal.New(path, fileName, symbol.Separator1) //ToDo: del fileName
+	// fileName := "start.txt"
+	ln := logname.New(8)
+	wal, err := wal.New(path, ln, symbol.Separator1, logExt) //ToDo: del fileName
 	if err != nil {
 		return nil, err
 	}
