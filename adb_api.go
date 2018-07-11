@@ -62,7 +62,7 @@ func New(path string) (*Adb, error) {
 		path:     path,
 		batcher:  b,
 		wal:      wal,
-		snapshot: newSnapshoter(symbol, path),
+		snapshot: newSnapshoter(symbol, path, ln),
 		ch:       ch,
 		ch2:      ch2,
 		time:     &time.Time{},

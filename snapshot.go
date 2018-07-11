@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"sync/atomic"
+
+	"github.com/claygod/adb/logname"
 )
 
 type Snapshoter struct {
@@ -18,13 +20,15 @@ type Snapshoter struct {
 	state        int64
 	lastSnapshot int64
 	accounts     *Accounts
+	logname      *logname.LogName
 }
 
-func newSnapshoter(symbol *Symbol, path string) *Snapshoter {
+func newSnapshoter(symbol *Symbol, path string, ln *logname.LogName) *Snapshoter {
 	return &Snapshoter{
 		path:     path,
 		state:    stateClosed,
 		accounts: newAccounts(symbol),
+		logname:  ln,
 	}
 }
 
