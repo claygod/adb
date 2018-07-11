@@ -9,8 +9,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"github.com/claygod/adb/logname"
 )
 
 type Wal struct {
@@ -20,12 +18,12 @@ type Wal struct {
 	time      time.Time
 	separator string
 	path      string
-	logname   *logname.LogName
+	logname   LogNamer
 	curname   string
 	ext       string
 }
 
-func New(path string, ln *logname.LogName, separator string, ext string) (*Wal, error) {
+func New(path string, ln LogNamer, separator string, ext string) (*Wal, error) {
 	file, err := os.Create(path + ln.GetName() + ext)
 	if err != nil {
 		return nil, err
@@ -87,6 +85,10 @@ func (w *Wal) Close() error {
 	w.m.Lock()
 	defer w.m.Unlock()
 	return w.file.Close()
+}
+
+type LogNamer interface {
+	GetName() string
 }
 
 /*
