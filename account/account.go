@@ -18,40 +18,12 @@ type Account struct {
 /*
 New - create new Account.
 */
-func New() *Account { // separator1 string, separator2 string, separator3 string
+func New() *Account {
 	return &Account{
 		data: make(map[string]*SubAccount),
 	}
 }
 
-/*
-func Import(args ...string) (*Account, error) { // separator1 string, separator2 string, separator3 string
-	switch len(args) {
-	case 3:
-		return &Account{
-			separator1: args[0],
-			separator2: args[1],
-			separator3: args[2],
-			data:       make(map[string]*SubAccount),
-		}, nil
-	case 4:
-		acc := &Account{
-			separator1: args[0],
-			separator2: args[1],
-			separator3: args[2],
-			data:       make(map[string]*SubAccount),
-		}
-		if err := acc.Import(args[3]); err != nil {
-			return nil, err
-		}
-		return acc, nil
-
-	default:
-		return nil, fmt.Errorf("Invalid number of arguments")
-	}
-
-}
-*/
 func (a *Account) Balance(id string) *SubAccount {
 	acc, ok := a.data[id]
 	if !ok {
@@ -291,6 +263,3 @@ func (s *SubAccount) WriteOff(amount uint64) (Balance, error) { //  Credit opera
 	return s.Balance, nil
 }
 
-//func (a *Account) balance() Balance {
-//	return Balance{a.available, a.blocked}
-//}
